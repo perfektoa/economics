@@ -1,0 +1,111 @@
+// Series registry — one entry per indicator.
+// kind: 'level' = use values as-is; 'yoy' = 12-month percent change (monthly data)
+// goodWhenUp intentionally omitted — arrows stay neutral; this tool describes, it doesn't advise.
+export const SERIES = [
+    // ── US core ──────────────────────────────────────────────
+    { id: 'GDPNOW',           label: 'GDP Nowcast (Atlanta Fed)', unit: '%',    kind: 'level', dec: 1, group: 'us' },
+    { id: 'A191RL1Q225SBEA',  label: 'Real GDP Growth (SAAR)',    unit: '%',    kind: 'level', dec: 1, group: 'us' },
+    { id: 'CPIAUCSL',         label: 'Inflation — CPI YoY',       unit: '%',    kind: 'yoy',   dec: 1, group: 'us' },
+    { id: 'CPILFESL',         label: 'Core CPI YoY',              unit: '%',    kind: 'yoy',   dec: 1, group: 'us' },
+    { id: 'FEDFUNDS',         label: 'Fed Funds Rate',            unit: '%',    kind: 'level', dec: 2, group: 'us' },
+    { id: 'T10Y2Y',           label: 'Yield Curve (10Y − 2Y)',    unit: '%',    kind: 'level', dec: 2, group: 'us' },
+    { id: 'UNRATE',           label: 'Unemployment',              unit: '%',    kind: 'level', dec: 1, group: 'us' },
+    { id: 'HOUST',            label: 'Housing Starts',            unit: 'k',    kind: 'level', dec: 0, group: 'us' },
+    { id: 'BAMLH0A0HYM2',     label: 'High-Yield Credit Spread',  unit: '%',    kind: 'level', dec: 2, group: 'us' },
+    { id: 'VIXCLS',           label: 'VIX',                       unit: '',     kind: 'level', dec: 1, group: 'us' },
+    // ── US expansion pack ────────────────────────────────────
+    { id: 'MORTGAGE30US',     label: '30y Mortgage Rate',         unit: '%',    kind: 'level', dec: 2, group: 'us' },
+    { id: 'ICSA',             label: 'Initial Jobless Claims',    unit: 'k',    kind: 'level', dec: 0, group: 'us', scale: 0.001 },
+    { id: 'PAYEMS',           label: 'Payrolls YoY',              unit: '%',    kind: 'yoy',   dec: 1, group: 'us' },
+    { id: 'INDPRO',           label: 'Industrial Production YoY', unit: '%',    kind: 'yoy',   dec: 1, group: 'us' },
+    { id: 'UMCSENT',          label: 'Consumer Sentiment',        unit: '',     kind: 'level', dec: 1, group: 'us' },
+    { id: 'M2SL',             label: 'Money Supply (M2) YoY',     unit: '%',    kind: 'yoy',   dec: 1, group: 'us' },
+    { id: 'T5YIFR',           label: 'Inflation Expectations (5y5y)', unit: '%', kind: 'level', dec: 2, group: 'us' },
+    { id: 'NFCI',             label: 'Financial Conditions (NFCI)', unit: '',  kind: 'level', dec: 2, group: 'us', optional: true },
+    { id: 'CSUSHPINSA',       label: 'Home Prices YoY (Case-Shiller)', unit: '%', kind: 'yoy', dec: 1, group: 'us', optional: true },
+    { id: 'DRCCLACBS',        label: 'Credit Card Delinquency',   unit: '%',    kind: 'level', dec: 2, group: 'us', optional: true },
+    { id: 'DRSFRMACBS',       label: 'Mortgage Delinquency',      unit: '%',    kind: 'level', dec: 2, group: 'us', optional: true },
+    // ── Commodities / dollar ─────────────────────────────────
+    { id: 'DCOILWTICO',       label: 'Crude Oil (WTI)',           unit: '$',    kind: 'level', dec: 0, group: 'mkt' },
+    { id: 'DTWEXBGS',         label: 'Dollar Index (Broad)',      unit: '',     kind: 'level', dec: 1, group: 'mkt' },
+    { id: 'PCOPPUSDM',        label: 'Copper ($/tonne)',          unit: '$',    kind: 'level', dec: 0, group: 'mkt', optional: true },
+    { id: 'DHHNGSP',          label: 'Natural Gas (Henry Hub)',   unit: '$',    kind: 'level', dec: 2, group: 'mkt', optional: true },
+    // Futures (front-month via Yahoo) — adds real-time copper/grains/crude
+    { id: 'YH_CL',   sym: 'CL=F',  src: 'yahoo', label: 'Crude Futures',   unit: '$', kind: 'level', dec: 1, group: 'mkt', optional: true },
+    { id: 'YH_HG',   sym: 'HG=F',  src: 'yahoo', label: 'Copper Futures',  unit: '$', kind: 'level', dec: 2, group: 'mkt', optional: true },
+    { id: 'YH_ZW',   sym: 'ZW=F',  src: 'yahoo', label: 'Wheat Futures',   unit: '$', kind: 'level', dec: 0, group: 'mkt', optional: true },
+    { id: 'YH_ZC',   sym: 'ZC=F',  src: 'yahoo', label: 'Corn Futures',    unit: '$', kind: 'level', dec: 0, group: 'mkt', optional: true },
+    // Gold: FRED's LBMA series have been shuffled over the years — first candidate that returns data wins.
+    { id: 'GOLDPMGBD228NLBM', label: 'Gold (LBMA PM)',            unit: '$',    kind: 'level', dec: 0, group: 'mkt', optional: true },
+    { id: 'GOLDAMGBD228NLBM', label: 'Gold (LBMA AM)',            unit: '$',    kind: 'level', dec: 0, group: 'mkt', optional: true, fallbackFor: 'GOLDPMGBD228NLBM' },
+    // ── Markets via Yahoo (no key; monthly bars) ─────────────
+    { id: 'YH_GOLD',   sym: 'GC=F',      src: 'yahoo', label: 'Gold',            unit: '$', kind: 'level', dec: 0, group: 'mkt', optional: true },
+    { id: 'YH_SILVER', sym: 'SI=F',      src: 'yahoo', label: 'Silver',          unit: '$', kind: 'level', dec: 1, group: 'mkt', optional: true },
+    { id: 'YH_SPX',    sym: '^GSPC',     src: 'yahoo', label: 'S&P 500',         unit: '',  kind: 'level', dec: 0, group: 'idx', optional: true },
+    { id: 'YH_NDX',    sym: '^IXIC',     src: 'yahoo', label: 'Nasdaq',          unit: '',  kind: 'level', dec: 0, group: 'idx', optional: true },
+    { id: 'YH_N225',   sym: '^N225',     src: 'yahoo', label: 'Nikkei 225',      unit: '',  kind: 'level', dec: 0, group: 'idx', optional: true },
+    { id: 'YH_DAX',    sym: '^GDAXI',    src: 'yahoo', label: 'DAX (Germany)',   unit: '',  kind: 'level', dec: 0, group: 'idx', optional: true },
+    { id: 'YH_FTSE',   sym: '^FTSE',     src: 'yahoo', label: 'FTSE 100 (UK)',   unit: '',  kind: 'level', dec: 0, group: 'idx', optional: true },
+    { id: 'YH_SSE',    sym: '000001.SS', src: 'yahoo', label: 'Shanghai Comp.',  unit: '',  kind: 'level', dec: 0, group: 'idx', optional: true },
+    // ── S&P sectors via SPDR ETFs (real-world sector heat map) ──
+    { id: 'YH_XLK',  sym: 'XLK',  src: 'yahoo', label: 'Technology',        unit: '', kind: 'level', dec: 0, group: 'sector', optional: true },
+    { id: 'YH_XLF',  sym: 'XLF',  src: 'yahoo', label: 'Financials',        unit: '', kind: 'level', dec: 0, group: 'sector', optional: true },
+    { id: 'YH_XLV',  sym: 'XLV',  src: 'yahoo', label: 'Health Care',       unit: '', kind: 'level', dec: 0, group: 'sector', optional: true },
+    { id: 'YH_XLE',  sym: 'XLE',  src: 'yahoo', label: 'Energy',            unit: '', kind: 'level', dec: 0, group: 'sector', optional: true },
+    { id: 'YH_XLI',  sym: 'XLI',  src: 'yahoo', label: 'Industrials',       unit: '', kind: 'level', dec: 0, group: 'sector', optional: true },
+    { id: 'YH_XLP',  sym: 'XLP',  src: 'yahoo', label: 'Consumer Staples',  unit: '', kind: 'level', dec: 0, group: 'sector', optional: true },
+    { id: 'YH_XLY',  sym: 'XLY',  src: 'yahoo', label: 'Consumer Discret.', unit: '', kind: 'level', dec: 0, group: 'sector', optional: true },
+    { id: 'YH_XLU',  sym: 'XLU',  src: 'yahoo', label: 'Utilities',         unit: '', kind: 'level', dec: 0, group: 'sector', optional: true },
+    { id: 'YH_XLB',  sym: 'XLB',  src: 'yahoo', label: 'Materials',         unit: '', kind: 'level', dec: 0, group: 'sector', optional: true },
+    { id: 'YH_XLRE', sym: 'XLRE', src: 'yahoo', label: 'Real Estate',       unit: '', kind: 'level', dec: 0, group: 'sector', optional: true },
+    { id: 'YH_XLC',  sym: 'XLC',  src: 'yahoo', label: 'Communications',    unit: '', kind: 'level', dec: 0, group: 'sector', optional: true },
+    // ── Sub-industries via industry ETFs ─────────────────────
+    { id: 'YH_SMH',  sym: 'SMH',  src: 'yahoo', label: 'Semiconductors',      unit: '', kind: 'level', dec: 0, group: 'industry', optional: true },
+    { id: 'YH_XSW',  sym: 'XSW',  src: 'yahoo', label: 'Software',            unit: '', kind: 'level', dec: 0, group: 'industry', optional: true },
+    { id: 'YH_XBI',  sym: 'XBI',  src: 'yahoo', label: 'Biotech',             unit: '', kind: 'level', dec: 0, group: 'industry', optional: true },
+    { id: 'YH_XPH',  sym: 'XPH',  src: 'yahoo', label: 'Pharma',              unit: '', kind: 'level', dec: 0, group: 'industry', optional: true },
+    { id: 'YH_IHI',  sym: 'IHI',  src: 'yahoo', label: 'Medical Devices',     unit: '', kind: 'level', dec: 0, group: 'industry', optional: true },
+    { id: 'YH_KBE',  sym: 'KBE',  src: 'yahoo', label: 'Banks',               unit: '', kind: 'level', dec: 0, group: 'industry', optional: true },
+    { id: 'YH_KRE',  sym: 'KRE',  src: 'yahoo', label: 'Regional Banks',      unit: '', kind: 'level', dec: 0, group: 'industry', optional: true },
+    { id: 'YH_KIE',  sym: 'KIE',  src: 'yahoo', label: 'Insurance',           unit: '', kind: 'level', dec: 0, group: 'industry', optional: true },
+    { id: 'YH_XOP',  sym: 'XOP',  src: 'yahoo', label: 'Oil E&P',             unit: '', kind: 'level', dec: 0, group: 'industry', optional: true },
+    { id: 'YH_OIH',  sym: 'OIH',  src: 'yahoo', label: 'Oil Services',        unit: '', kind: 'level', dec: 0, group: 'industry', optional: true },
+    { id: 'YH_GDX',  sym: 'GDX',  src: 'yahoo', label: 'Gold Miners',         unit: '', kind: 'level', dec: 0, group: 'industry', optional: true },
+    { id: 'YH_XME',  sym: 'XME',  src: 'yahoo', label: 'Metals & Mining',     unit: '', kind: 'level', dec: 0, group: 'industry', optional: true },
+    { id: 'YH_XHB',  sym: 'XHB',  src: 'yahoo', label: 'Homebuilders',        unit: '', kind: 'level', dec: 0, group: 'industry', optional: true },
+    { id: 'YH_XRT',  sym: 'XRT',  src: 'yahoo', label: 'Retail',              unit: '', kind: 'level', dec: 0, group: 'industry', optional: true },
+    { id: 'YH_XTN',  sym: 'XTN',  src: 'yahoo', label: 'Transports',          unit: '', kind: 'level', dec: 0, group: 'industry', optional: true },
+    { id: 'YH_ITA',  sym: 'ITA',  src: 'yahoo', label: 'Aerospace & Defense', unit: '', kind: 'level', dec: 0, group: 'industry', optional: true },
+    { id: 'YH_PAVE', sym: 'PAVE', src: 'yahoo', label: 'Infrastructure',      unit: '', kind: 'level', dec: 0, group: 'industry', optional: true },
+    { id: 'YH_ITB',  sym: 'ITB',  src: 'yahoo', label: 'Home Construction',   unit: '', kind: 'level', dec: 0, group: 'industry', optional: true },
+    // ── Wealth & inequality (Fed Distributional Financial Accounts + BLS/Census/World Bank) ──
+    // Slow structural dials: quarterly or annual. Annual ones drift in and out of the
+    // 30-month staleness window between releases — that's expected.
+    { id: 'WFRBST01134',   label: 'Top 1% Share of Net Worth',        unit: '%', kind: 'level', dec: 1, group: 'ineq', optional: true },
+    { id: 'WFRBSB50215',   label: 'Bottom 50% Share of Net Worth',    unit: '%', kind: 'level', dec: 1, group: 'ineq', optional: true },
+    { id: 'PRS85006173',   label: 'Labor Share of Output (2017=100)', unit: '',  kind: 'level', dec: 1, group: 'ineq', optional: true },
+    { id: 'MEHOINUSA672N', label: 'Real Median Household Income',     unit: '$', kind: 'level', dec: 0, group: 'ineq', optional: true },
+    { id: 'SIPOVGINIUSA',  label: 'Gini Index (World Bank)',          unit: '',  kind: 'level', dec: 1, group: 'ineq', optional: true },
+    // ── Sovereign debt (US structure; world levels come from debt.json/IMF) ──
+    { id: 'GFDEGDQ188S', label: 'US Federal Debt / GDP',        unit: '%', kind: 'level', dec: 1, group: 'debt', optional: true },
+    { id: 'FYOIGDA188S', label: 'US Interest Cost / GDP',       unit: '%', kind: 'level', dec: 2, group: 'debt', optional: true },
+    // ── Global (best-effort; some OECD-sourced series go stale — skipped gracefully) ──
+    { id: 'ECBDFR',           label: 'ECB Deposit Rate',          unit: '%',    kind: 'level', dec: 2, group: 'world', optional: true },
+    { id: 'CP0000EZ19M086NEST', label: 'Eurozone Inflation YoY',  unit: '%',    kind: 'yoy',   dec: 1, group: 'world', optional: true },
+    { id: 'GBRCPIALLMINMEI',  label: 'UK Inflation YoY',          unit: '%',    kind: 'yoy',   dec: 1, group: 'world', optional: true },
+    { id: 'JPNCPIALLMINMEI',  label: 'Japan Inflation YoY',       unit: '%',    kind: 'yoy',   dec: 1, group: 'world', optional: true },
+    { id: 'IRSTCI01JPM156N',  label: 'Japan Policy Rate',         unit: '%',    kind: 'level', dec: 2, group: 'world', optional: true },
+    // ── Currencies (Yahoo) ───────────────────────────────────
+    { id: 'YH_EURUSD', sym: 'EURUSD=X', src: 'yahoo', label: 'EUR / USD', unit: '', kind: 'level', dec: 3, group: 'fx', optional: true },
+    { id: 'YH_USDJPY', sym: 'JPY=X',    src: 'yahoo', label: 'USD / JPY', unit: '', kind: 'level', dec: 1, group: 'fx', optional: true },
+    { id: 'YH_USDCNY', sym: 'CNY=X',    src: 'yahoo', label: 'USD / CNY', unit: '', kind: 'level', dec: 2, group: 'fx', optional: true },
+    { id: 'YH_GBPUSD', sym: 'GBPUSD=X', src: 'yahoo', label: 'GBP / USD', unit: '', kind: 'level', dec: 3, group: 'fx', optional: true },
+    // ── Meta (fetched for computations/alerts; not displayed directly) ──
+    { id: 'USREC',            label: 'US Recession Indicator',    unit: '',     kind: 'level', dec: 0, group: 'meta' },
+    { id: 'YH_RSP', sym: 'RSP', src: 'yahoo', label: 'Equal-weight S&P (RSP)', unit: '', kind: 'level', dec: 0, group: 'meta', optional: true },
+    { id: 'DFEDTARU',         label: 'Fed Target Rate (Upper)',   unit: '%',    kind: 'level', dec: 2, group: 'meta', optional: true },
+    // Debt-holder computation inputs (GFDEBTN in $M; the FDHB* pair in $B)
+    { id: 'GFDEBTN',          label: 'US Total Public Debt',      unit: '$',    kind: 'level', dec: 0, group: 'meta', optional: true },
+    { id: 'FDHBFRBN',         label: 'US Debt Held by Fed',       unit: '$',    kind: 'level', dec: 0, group: 'meta', optional: true },
+    { id: 'FDHBFIN',          label: 'US Debt Held by Foreigners', unit: '$',   kind: 'level', dec: 0, group: 'meta', optional: true },
+];

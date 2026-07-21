@@ -1,0 +1,4 @@
+{
+  "fredApiKey": "YOUR_FRED_API_KEY  (free: https://fred.stlouisfed.org/docs/api/api_key.html)",
+  "ntfyTopic": "YOUR_NTFY_TOPIC  (pick a long random name; subscribe to it in the ntfy phone app)"
+}

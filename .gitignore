@@ -1,0 +1,16 @@
+# SECRETS — never commit (FRED API key + ntfy phone-alert topic live here)
+config.json
+
+# fetched data caches & generated pages — every script rebuilds these
+data/
+data-screener/
+node_modules/
+dashboard.html
+screener.html
+calendar.json
+debt.json
+news.json
+top-list.json
+snapshot.json
+alerts-state.json
+trump-seen.json

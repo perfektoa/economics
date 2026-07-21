@@ -1,0 +1,16 @@
+{
+  "name": "macro-monitor",
+  "version": "1.0.0",
+  "description": "A local, watch-only macro dashboard inspired by the Wall Street Raider Macro Monitor mod. Pulls ~18 series from FRED (free API), renders a single self-contained `dashboard.html`: regime chip, risk chips, indicator cells with 3m/12m trends, and full-history charts (back to the 1940s-50s for most US series) with US recession shading, hover crosshairs, and 10y/25y/Max ranges.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "yahoo-finance2": "^4.0.0"
+  }
+}
