@@ -86,6 +86,12 @@ export const SERIES = [
     { id: 'PRS85006173',   label: 'Labor Share of Output (2017=100)', unit: '',  kind: 'level', dec: 1, group: 'ineq', optional: true },
     { id: 'MEHOINUSA672N', label: 'Real Median Household Income',     unit: '$', kind: 'level', dec: 0, group: 'ineq', optional: true },
     { id: 'SIPOVGINIUSA',  label: 'Gini Index (World Bank)',          unit: '',  kind: 'level', dec: 1, group: 'ineq', optional: true },
+    { id: 'WFRBSTP1300',   label: 'Top 0.1% Share of Net Worth',      unit: '%', kind: 'level', dec: 1, group: 'ineq', optional: true },
+    { id: 'WFRBST01122',   label: 'Top 1% Share of All Stocks',       unit: '%', kind: 'level', dec: 1, group: 'ineq', optional: true },
+    // Is capital being deployed or parked? Velocity = how often each dollar
+    // changes hands; investment share = how much output goes into building things.
+    { id: 'M2V',           label: 'Money Velocity (M2)',              unit: '',  kind: 'level', dec: 2, group: 'ineq', optional: true },
+    { id: 'A006RE1Q156NBEA', label: 'Investment Share of GDP',        unit: '%', kind: 'level', dec: 1, group: 'ineq', optional: true },
     // ── Sovereign debt (US structure; world levels come from debt.json/IMF) ──
     { id: 'GFDEGDQ188S', label: 'US Federal Debt / GDP',        unit: '%', kind: 'level', dec: 1, group: 'debt', optional: true },
     { id: 'FYOIGDA188S', label: 'US Interest Cost / GDP',       unit: '%', kind: 'level', dec: 2, group: 'debt', optional: true },
