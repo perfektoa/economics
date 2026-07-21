@@ -148,6 +148,19 @@ function delta(pts, months) {
     }
     return null;
 }
+// Percent change over a real calendar span. Never count array entries: several
+// series (gold, the FX pairs) are missing scattered months, so "13 entries back"
+// can be 16 months back and quietly mislabel the column.
+function pctDelta(pts, months) {
+    if (!pts || pts.length < 2) return null;
+    const [lm, lv] = pts[pts.length - 1];
+    for (let i = pts.length - 2; i >= 0; i--) {
+        if (monthsBetween(pts[i][0], lm) >= months) {
+            return pts[i][1] ? (lv / pts[i][1] - 1) * 100 : null;
+        }
+    }
+    return null;
+}
 const g = (id) => built[id] || null;
 
 // ── real (inflation-adjusted) prices: deflate by CPI to today's dollars ─────
@@ -188,6 +201,36 @@ const pReal = (id) => built[id + '_R']?.p ?? null;
             built['BREADTH'] = {
                 id: 'BREADTH', label: 'Breadth: Equal÷Cap-weight S&P (idx)', unit: '', dec: 1, group: 'idx',
                 derived: true, pts, latest: pts[pts.length - 1][1], asOf: spx.asOf, stale: false,
+                d3: delta(pts, 3), d12: delta(pts, 12), p: pctile(pts), since: pts[0][0].slice(0, 4),
+            };
+        }
+    }
+}
+
+// ── gold priced in other currencies ─────────────────────────────────────────
+// The "is it the thing, or is it the ruler?" test. If gold rises only in dollars
+// it is a currency story; if it rises in every currency it is real gold demand.
+{
+    const gold = built['YH_GOLD'];
+    const fx = [
+        ['YH_EURUSD', 'EUR', 'div'],  // EURUSD = dollars per euro
+        ['YH_USDJPY', 'JPY', 'mul'],  // JPY=X   = yen per dollar
+        ['YH_GBPUSD', 'GBP', 'div'],
+    ];
+    if (gold) {
+        for (const [fxId, code, op] of fx) {
+            const f = built[fxId];
+            if (!f) continue;
+            const fmap = new Map(f.pts);
+            const pts = gold.pts.map(([m, v]) => {
+                const r = fmap.get(m);
+                if (!r) return null;
+                return [m, op === 'div' ? v / r : v * r];
+            }).filter(Boolean);
+            if (pts.length < 24) continue;
+            built['GOLD_' + code] = {
+                id: 'GOLD_' + code, label: `Gold priced in ${code}`, unit: '', dec: 0, group: 'mkt',
+                derived: true, pts, latest: pts[pts.length - 1][1], asOf: gold.asOf, stale: false,
                 d3: delta(pts, 3), d12: delta(pts, 12), p: pctile(pts), since: pts[0][0].slice(0, 4),
             };
         }
@@ -402,20 +445,14 @@ const S = (id) => built[id] || null;
 const sectorChg = {};
 for (const s of Object.values(built)) {
     if (s.group !== 'sector') continue;
-    const c = (k) => s.pts.length > k ? (s.pts[s.pts.length - 1][1] / s.pts[s.pts.length - 1 - k][1] - 1) * 100 : null;
-    sectorChg[s.label] = { m1: c(1), m3: c(3) };
+    sectorChg[s.label] = { m1: pctDelta(s.pts, 1), m3: pctDelta(s.pts, 3) };
 }
 const sec1mRank = Object.entries(sectorChg).sort((a, b) => (b[1].m1 ?? -99) - (a[1].m1 ?? -99)).map(([k]) => k);
 const inTop3_1m = (name) => sec1mRank.slice(0, 3).includes(name);
 // Percent change over k months for any built series — lets the desk note check
 // DIRECTION, not just how extreme a level is. A price can be historically high
 // and falling at the same time; those need different words.
-const chgOf = (id, k) => {
-    const s = built[id];
-    if (!s || s.pts.length < k + 1) return null;
-    const a = s.pts[s.pts.length - 1 - k][1], b = s.pts[s.pts.length - 1][1];
-    return a ? (b / a - 1) * 100 : null;
-};
+const chgOf = (id, k) => built[id] ? pctDelta(built[id].pts, k) : null;
 const trendWord = (c) => c == null ? 'flat' : c > 3 ? 'rising' : c < -3 ? 'falling' : 'flat';
 const rankOf = (name) => { const i = sec1mRank.indexOf(name); return i < 0 ? '—' : `${i + 1} of ${sec1mRank.length}`; };
 // 1st/2nd/3rd/4th — percentiles appear in prose constantly.
@@ -558,12 +595,7 @@ if (has('INFLATION IMPULSE')) {
     ].filter(Boolean).join('; ');
     // Same yardstick for every commodity: inflation-adjusted level percentile
     // and inflation-adjusted 12-month change, so the comparison is visibly fair.
-    const realChg12 = (id) => {
-        const r = built[id + '_R'];
-        if (!r || r.pts.length < 13) return null;
-        const now = r.pts[r.pts.length - 1][1], then = r.pts[r.pts.length - 13][1];
-        return then ? (now / then - 1) * 100 : null;
-    };
+    const realChg12 = (id) => built[id + '_R'] ? pctDelta(built[id + '_R'].pts, 12) : null;
     // Both windows, because a 3-month reading can call something "falling" when
     // it bottomed weeks ago and has already turned.
     const turns = [];
@@ -866,6 +898,21 @@ ${e.date === todayStr ? 'TODAY' : `${dow(e.date)} ${e.date.slice(5)}`} · ${esc(
 </div>`;
 })()}
 <h2>Commodities &amp; Dollar</h2><div class="cells">${cells('mkt')}</div>
+${(() => {
+    const g = built['YH_GOLD'], e = built['GOLD_EUR'], j = built['GOLD_JPY'], b = built['GOLD_GBP'];
+    if (!g || !e) return '';
+    const c12 = (s) => s ? pctDelta(s.pts, 12) : null;
+    const c36 = (s) => s ? pctDelta(s.pts, 36) : null;
+    const dxy = built['DTWEXBGS'];
+    const cell = (v) => v == null ? '<td>—</td>' : `<td style="color:${v >= 0 ? 'var(--good)' : 'var(--bad)'};font-variant-numeric:tabular-nums;">${fmtD(v, 1)}%</td>`;
+    return `<div class="tablewrap" style="border:1px solid var(--line);border-radius:6px;background:var(--panel);overflow-x:auto;margin-top:8px;">
+<table><thead><tr><th>Is gold rising, or is the dollar falling?</th><th>12 months</th><th>3 years</th></tr></thead><tbody>
+${[['Gold in US dollars', g], ['Gold in euros', e], ['Gold in yen', j], ['Gold in pounds', b], ['Broad dollar index', dxy]]
+    .filter(([, s]) => s).map(([n, s]) => `<tr><td style="text-align:left;color:var(--ink);">${esc(n)}</td>${cell(c12(s))}${cell(c36(s))}</tr>`).join('')}
+</tbody></table>
+<div style="padding:5px 10px;font-size:11px;color:var(--muted);">If gold rises only in dollars, it is a currency story. If it rises in every currency, it is real demand for gold. The same test applies to any price: check whether the thing moved or the measuring stick did.</div>
+</div>`;
+})()}
 <h2>Currencies</h2><div class="cells">${cells('fx')}</div>
 <h2>Stock Indices</h2><div class="cells">${cells('idx')}</div>
 ${(() => {
@@ -873,12 +920,7 @@ ${(() => {
     const heatTable = (group, title, sub, note) => {
         const secs = payload.series.filter(s => s.group === group);
         if (!secs.length) return '';
-        const chg = (s, k) => {
-            const pts = s.pts;
-            if (pts.length < k + 1) return null;
-            const a = pts[pts.length - 1 - k][1], b = pts[pts.length - 1][1];
-            return a ? (b / a - 1) * 100 : null;
-        };
+        const chg = (s, k) => pctDelta(s.pts, k);
         const rows = secs.map(s => ({ label: s.label, m1: chg(s, 1), m3: chg(s, 3), m6: chg(s, 6), m12: chg(s, 12) }))
             .sort((a, b) => (b.m3 ?? -99) - (a.m3 ?? -99));
         const cell = (v) => v == null ? '<td>—</td>' :
