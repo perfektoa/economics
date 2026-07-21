@@ -95,6 +95,9 @@ export const SERIES = [
     { id: 'A006RE1Q156NBEA', label: 'Investment Share of GDP',        unit: '%', kind: 'level', dec: 1, group: 'ineq', optional: true },
     { id: 'RHORUSQ156N',   label: 'Homeownership Rate',               unit: '%', kind: 'level', dec: 1, group: 'ineq', optional: true },
     { id: 'BABATOTALSAUS', label: 'New Business Applications',        unit: '',  kind: 'level', dec: 0, group: 'ineq', optional: true },
+    // Apartment supply: completions set rents ~now, starts set them ~2 years out
+    { id: 'COMPU5MUSA',    label: 'Apartments Completed (5+ units)',  unit: 'k', kind: 'level', dec: 0, group: 'us', optional: true },
+    { id: 'HOUST5F',       label: 'Apartments Started (5+ units)',    unit: 'k', kind: 'level', dec: 0, group: 'us', optional: true },
     // Rent vs wages: the cost-of-living squeeze where it actually bites
     { id: 'CUSR0000SEHA',  label: 'Rent (CPI)',                       unit: '',  kind: 'level', dec: 1, group: 'meta', optional: true },
     { id: 'CES0500000003', label: 'Average Hourly Earnings',          unit: '$', kind: 'level', dec: 2, group: 'meta', optional: true },
