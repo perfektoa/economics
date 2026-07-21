@@ -1,55 +1,86 @@
-# Macro Monitor — Real World
+# Macro Monitor
 
-A local, watch-only macro dashboard inspired by the Wall Street Raider Macro
-Monitor mod. Pulls ~18 series from FRED (free API), renders a single
-self-contained `dashboard.html`: regime chip, risk chips, indicator cells with
-3m/12m trends, and full-history charts (back to the 1940s-50s for most US
-series) with US recession shading, hover crosshairs, and 10y/25y/Max ranges.
+A local, watch-only macro dashboard. It pulls about 90 economic and market
+series from FRED and Yahoo, and builds a single self-contained `dashboard.html`
+you open in a browser: current readings with each number scored against its own
+full history, full-history charts with recession shading, sector and industry
+heat tables, historical analogs, a sovereign debt section, wealth concentration
+measures, and a rule-generated summary of what it all adds up to.
+
+It also runs a **forecast journal**: the tool writes its own forecasting
+questions (ahead of Fed meetings, jobs reports, CPI releases, and whenever an
+indicator hits a historic extreme), you answer with a probability slider, and it
+scores you automatically with a Brier score once the data resolves.
 
 **Educational only.** It describes conditions and documented historical
-tendencies (with base rates and famous exceptions). It does not recommend
-securities or trades and is not investment advice.
+tendencies, with base rates and exceptions. It does not recommend securities or
+trades and is not investment advice.
+
+## Setup
+
+1. Get a free FRED API key: https://fred.stlouisfed.org/docs/api/api_key.html
+2. Copy `config.example.json` to `config.json` and paste your key in.
+3. Optionally add an [ntfy.sh](https://ntfy.sh) topic for phone alerts. The topic
+   name is effectively a password, so pick something long and random.
+4. `npm install`
 
 ## Run
 
 ```powershell
-.\run.ps1          # fetch (cached <20h) + build + open
+.\run.ps1          # fetch (cached), rebuild, and open the dashboard
 .\run.ps1 -Force   # refetch everything
+.\screener.ps1     # rebuild the value screener (slower, ~4,600 stocks)
 ```
 
-Optional: schedule it each weekday morning —
-`schtasks /create /tn MacroMonitor /tr "powershell -File C:\GameDev\macro-monitor\run.ps1" /sc weekly /d MON,TUE,WED,THU,FRI /st 08:00`
+Open the dashboard at **http://localhost:8787** rather than opening the HTML
+file directly. The file works, but the forecast journal buttons need the local
+server in order to save anything.
 
-## Value Screener (screener.html)
+Scheduled tasks handle it hands-off: an hourly refresh, a daily screener run,
+and a startup entry that keeps the server alive.
 
-`screener.ps1` (or the daily 8:10 task) scores every US-listed common stock
-≥ $50M market cap (~4,600 names, mega → micro) on three factor scores:
+## What is in it
 
-- **Value 0-6** — earnings yield ≥6%, P/B<1.5, dividend, D/E<1×, ROE≥12%, FCF+
-- **Quality 0-6** — ROA≥5%, gross margin≥30%, op margin≥10%, current ratio≥1.2,
-  earnings growing, revenue growing (Piotroski-spirit)
-- **Momentum 0-3** — 52w return >0 / >10% / within 10% of the 52-week high
-- **Total 0-15** and **MF#** (Greenblatt-style cheap+good rank)
-
-Combined value+quality+momentum is the factor-literature standard; single
-factors underperform combos historically. Universe: NASDAQ screener feed
-(NASDAQ+NYSE+AMEX, funds excluded); fundamentals: Yahoo, 20h cache per ticker.
-Micro caps often miss fields — missing counts as a failed test.
+- **Percentile scoring** — every indicator is judged against its own history,
+  so "high" means high for that series rather than high in the abstract.
+- **Inflation-adjusted prices** — commodities and the S&P are also shown in
+  today's dollars, which is the only fair way to compare a 1980 price to now.
+- **Auto Desk Note** — fixed rules detect named conditions (inflation pressure,
+  complacent lending, fiscal strain, a K-shaped economy, and others), flag where
+  two of them contradict each other, and write out what the textbooks say about
+  each setup. It reports what each theme is still missing, too.
+- **Sovereign debt** — debt/GDP for 194 countries from the IMF, plus who holds
+  US Treasuries (the Federal Reserve, foreign governments, domestic investors)
+  and the Treasury's major foreign holders table.
+- **Wealth and inequality** — Federal Reserve distributional accounts: top 1%
+  and bottom 50% wealth shares, labor share of output, median income, Gini.
+- **Forecast journal** — auto-generated questions, probability answers, Brier
+  scoring, phone alerts on resolution. `lessons.md` holds the running rulebook
+  and post-mortems.
+- **Value screener** — every US-listed common stock over $50M market cap scored
+  on value, quality and momentum, plus a Greenblatt-style combined rank.
+- **Phone alerts** — regime changes, Fed moves, release days, and unusual
+  readings, via ntfy.
 
 ## Files
 
-- `config.json` — your FRED API key. **Private; don't share or commit.**
-- `series.mjs` — the indicator registry (add/remove series here)
-- `fetch-data.mjs` — FRED fetcher → `data/*.json` cache
-- `build-dashboard.mjs` — builds `dashboard.html` (regime/chip logic lives here)
-- `test-render.mjs` — headless chart smoke test (run after editing the builder)
+- `config.json` — your API key and alert topic. **Private, never commit.**
+- `series.mjs` — the indicator registry; add or remove series here
+- `fetch-data.mjs` / `fetch-debt.mjs` / `fetch-calendar.mjs` / `fetch-news.mjs`
+- `build-dashboard.mjs` — builds `dashboard.html`, including the desk-note rules
+- `generate-questions.mjs` / `check-forecasts.mjs` — the forecast journal
+- `server.mjs` — localhost-only server so the journal buttons can save
+- `test-render.mjs` — headless chart smoke test; run after editing the builder
+- `lessons.md` — forecasting rulebook, graded results, and engine bugs caught
 
 ## Known gaps
 
-- **Gold**: FRED dropped the LBMA series (licensing). Add later via Alpaca or
-  yfinance. Same for stock indices (FRED's S&P 500 is 10y-only).
-- **Japan CPI** is stale on FRED (OECD feed ended 2021) — auto-dropped.
-- HY credit spread history on FRED now starts 2023 (licensing) — level is
-  current, chart is short.
-- World coverage is best-effort FRED; DBnomics/World Bank (keyless) are the
-  upgrade path for more countries.
+- FRED dropped its LBMA gold series, so gold and stock indices come from Yahoo,
+  which caps monthly history at roughly 500 bars.
+- Japan CPI on FRED ended in 2021 and is auto-dropped as stale.
+- FRED's high-yield spread history starts in 2023, so that chart is short even
+  though the level is current.
+- Annual series (median income, Gini) drift in and out of the staleness window
+  between releases. That is expected.
+- The tool reads no news at all. It sees prices and data only, and monthly
+  averages lag sharp moves by a couple of weeks.
