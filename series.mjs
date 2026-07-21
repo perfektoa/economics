@@ -41,6 +41,7 @@ export const SERIES = [
     // ── Markets via Yahoo (no key; monthly bars) ─────────────
     { id: 'YH_GOLD',   sym: 'GC=F',      src: 'yahoo', label: 'Gold',            unit: '$', kind: 'level', dec: 0, group: 'mkt', optional: true },
     { id: 'YH_SILVER', sym: 'SI=F',      src: 'yahoo', label: 'Silver',          unit: '$', kind: 'level', dec: 1, group: 'mkt', optional: true },
+    { id: 'YH_BTC',    sym: 'BTC-USD',   src: 'yahoo', label: 'Bitcoin',         unit: '$', kind: 'level', dec: 0, group: 'mkt', optional: true },
     { id: 'YH_SPX',    sym: '^GSPC',     src: 'yahoo', label: 'S&P 500',         unit: '',  kind: 'level', dec: 0, group: 'idx', optional: true },
     { id: 'YH_NDX',    sym: '^IXIC',     src: 'yahoo', label: 'Nasdaq',          unit: '',  kind: 'level', dec: 0, group: 'idx', optional: true },
     { id: 'YH_N225',   sym: '^N225',     src: 'yahoo', label: 'Nikkei 225',      unit: '',  kind: 'level', dec: 0, group: 'idx', optional: true },
@@ -93,9 +94,13 @@ export const SERIES = [
     { id: 'M2V',           label: 'Money Velocity (M2)',              unit: '',  kind: 'level', dec: 2, group: 'ineq', optional: true },
     { id: 'A006RE1Q156NBEA', label: 'Investment Share of GDP',        unit: '%', kind: 'level', dec: 1, group: 'ineq', optional: true },
     { id: 'RHORUSQ156N',   label: 'Homeownership Rate',               unit: '%', kind: 'level', dec: 1, group: 'ineq', optional: true },
+    { id: 'BABATOTALSAUS', label: 'New Business Applications',        unit: '',  kind: 'level', dec: 0, group: 'ineq', optional: true },
     // Inputs for the housing affordability panel (nominal, so the ratio is fair)
     { id: 'MSPUS',         label: 'Median Home Sale Price',           unit: '$', kind: 'level', dec: 0, group: 'meta', optional: true },
     { id: 'MEHOINUSA646N', label: 'Median Household Income',          unit: '$', kind: 'level', dec: 0, group: 'meta', optional: true },
+    // Inputs for wealth-to-output (the financialisation ratio)
+    { id: 'TNWBSHNO',      label: 'Household Net Worth',              unit: '$', kind: 'level', dec: 0, group: 'meta', optional: true },
+    { id: 'GDP',           label: 'Nominal GDP',                      unit: '$', kind: 'level', dec: 0, group: 'meta', optional: true },
     // ── Sovereign debt (US structure; world levels come from debt.json/IMF) ──
     { id: 'GFDEGDQ188S', label: 'US Federal Debt / GDP',        unit: '%', kind: 'level', dec: 1, group: 'debt', optional: true },
     { id: 'FYOIGDA188S', label: 'US Interest Cost / GDP',       unit: '%', kind: 'level', dec: 2, group: 'debt', optional: true },

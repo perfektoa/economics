@@ -75,7 +75,7 @@ const DIR = {
     NFCI: 'bad', DRCCLACBS: 'bad', DRSFRMACBS: 'bad', BREADTH: 'good',
     WFRBST01134: 'bad', WFRBSB50215: 'good', PRS85006173: 'good', MEHOINUSA672N: 'good',
     SIPOVGINIUSA: 'bad', WEALTHGAP: 'bad', GFDEGDQ188S: 'bad', FYOIGDA188S: 'bad',
-    WFRBSTP1300: 'bad', WFRBST01122: 'bad', A006RE1Q156NBEA: 'good',
+    WFRBSTP1300: 'bad', WFRBST01122: 'bad', A006RE1Q156NBEA: 'good', WEALTHGDP: 'bad',
 };
 
 // Historical tendencies at extremes — study prompts with base rates, not signals.
@@ -132,6 +132,8 @@ const EXTREME_NOTES = {
         playLow: 'Textbook: discount retail over mid-tier; subprime credit is the early-warning short when claims turn; transfer-heavy fiscal responses become the base case in any downturn.', playHigh: 'Textbook: broad consumer resilience — the median-consumer basket works.' },
     PRS85006173: { low: 'Labor share of output near historic lows — capital is taking a record slice: corporate margins are fat but politically exposed (minimum-wage pushes, unionization, tax shifts).', high: 'Labor share elevated — wages eating into margins; historically a late-cycle profit-squeeze marker.',
         playLow: 'Textbook: fat-margin regimes support equities until labor or policy claws it back — the turn signals are wage prints accelerating and unionization waves.', playHigh: 'Textbook: margin-compression era — favor pricing power over labor-heavy business models.' },
+    WEALTHGDP: { high: 'The value of everything households own is at a near-record multiple of what the economy produces in a year. It was 3.5x in 1985. When claims grow faster than output, the gap is paid for by higher prices on the same assets rather than by more production, which is why owning assets has beaten earning wages.', low: 'Asset values low relative to the economy, which historically preceded strong long-run returns.',
+        playHigh: 'Textbook: high starting valuations relative to the economy have historically meant weaker long-run returns and a bigger role for policy, since the wealth is concentrated and marked to prices that must keep rising to hold. It also means asset prices, not wages, drive spending.', playLow: 'Textbook: buying when claims are cheap relative to output was historically the better entry.' },
     M2V: { low: 'Each dollar is changing hands less often than almost ever. Read this carefully: the long decline is mostly an artifact of the Fed creating money faster than the economy grew, not proof that people are hoarding.', high: 'Money circulating fast, which historically accompanied inflationary booms.',
         playLow: 'Textbook: slow-circulating money has usually meant inflation stays contained despite large money supplies, because the money is sitting still. Watch for the turn: velocity rising while the money supply is already large is the combination that produced inflation.', playHigh: 'Textbook: fast money plus a large money supply is the inflationary configuration.' },
     A006RE1Q156NBEA: { low: 'A small share of the economy is going into building things: factories, equipment, housing. Historically that meant slower future growth, and it is one of the fingerprints of capital preferring existing assets over new ones.', high: 'Heavy investment in productive capacity, which historically supported future growth but sometimes built the overcapacity behind the next bust.',
@@ -208,6 +210,25 @@ const pReal = (id) => built[id + '_R']?.p ?? null;
             built['BREADTH'] = {
                 id: 'BREADTH', label: 'Breadth: Equal÷Cap-weight S&P (idx)', unit: '', dec: 1, group: 'idx',
                 derived: true, pts, latest: pts[pts.length - 1][1], asOf: spx.asOf, stale: false,
+                d3: delta(pts, 3), d12: delta(pts, 12), p: pctile(pts), since: pts[0][0].slice(0, 4),
+            };
+        }
+    }
+}
+
+// ── wealth as a multiple of output ──────────────────────────────────────────
+// Household net worth ($M) divided by annual GDP ($B). If claims on the economy
+// grow faster than the economy, prices are rising for reasons other than more
+// production. 3.5x in 1985; the ratio is the cleanest financialisation measure.
+{
+    const nwObs = load('TNWBSHNO'), gdpObs = load('GDP');
+    if (nwObs && gdpObs) {
+        const g = new Map(toMonthly(gdpObs));
+        const pts = toMonthly(nwObs).map(([m, v]) => g.get(m) ? [m, v / 1000 / g.get(m)] : null).filter(Boolean);
+        if (pts.length > 24) {
+            built['WEALTHGDP'] = {
+                id: 'WEALTHGDP', label: 'Household Wealth ÷ GDP', unit: 'x', dec: 2, group: 'ineq',
+                derived: true, pts, latest: pts[pts.length - 1][1], asOf: pts[pts.length - 1][0], stale: false,
                 d3: delta(pts, 3), d12: delta(pts, 12), p: pctile(pts), since: pts[0][0].slice(0, 4),
             };
         }
