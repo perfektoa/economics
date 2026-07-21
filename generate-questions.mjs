@@ -122,12 +122,14 @@ if (claimsNow != null) ask({
     askBy: plusDays(nextThu, -1), deadline: plusDays(nextThu, 3),
     resolve: { series: 'ICSA', op: '>', value: +claimsNow.toFixed(1), mode: 'any', from: plusDays(today, -7) },
 });
+// Answer windows run until the day before the event so an evening check-in
+// never misses one — two weeklies expired unanswered under a 3-day window.
 const oilNow = latestOf('DCOILWTICO');
 if (oilNow != null) ask({
     id: `q-oil-${nextFri}`,
     question: `WTI crude ends ${prettyDate(nextFri)} ABOVE today's $${oilNow.toFixed(0)}`,
     why: `Weekly rep on the barrel — the last daily close on or before ${prettyDate(nextFri)} decides it.`,
-    askBy: plusDays(today, 3), deadline: nextFri,
+    askBy: plusDays(nextFri, -1), deadline: nextFri,
     resolve: { series: 'DCOILWTICO', op: '>', value: +oilNow.toFixed(2), mode: 'final' },
 });
 const vixNow = latestOf('VIXCLS');
@@ -135,7 +137,7 @@ if (vixNow != null) ask({
     id: `q-vix-${nextFri}`,
     question: `VIX ends ${prettyDate(nextFri)} HIGHER than today's ${vixNow.toFixed(1)}`,
     why: `Weekly rep on fear itself. Calm weeks grind vol down; one headline spikes it.`,
-    askBy: plusDays(today, 3), deadline: nextFri,
+    askBy: plusDays(nextFri, -1), deadline: nextFri,
     resolve: { series: 'VIXCLS', op: '>', value: +vixNow.toFixed(2), mode: 'final' },
 });
 
