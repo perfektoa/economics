@@ -407,6 +407,16 @@ for (const s of Object.values(built)) {
 }
 const sec1mRank = Object.entries(sectorChg).sort((a, b) => (b[1].m1 ?? -99) - (a[1].m1 ?? -99)).map(([k]) => k);
 const inTop3_1m = (name) => sec1mRank.slice(0, 3).includes(name);
+// Percent change over k months for any built series — lets the desk note check
+// DIRECTION, not just how extreme a level is. A price can be historically high
+// and falling at the same time; those need different words.
+const chgOf = (id, k) => {
+    const s = built[id];
+    if (!s || s.pts.length < k + 1) return null;
+    const a = s.pts[s.pts.length - 1 - k][1], b = s.pts[s.pts.length - 1][1];
+    return a ? (b / a - 1) * 100 : null;
+};
+const trendWord = (c) => c == null ? 'flat' : c > 3 ? 'rising' : c < -3 ? 'falling' : 'flat';
 
 function theme(name, conds) {
     const met = conds.filter(c => c[1]);
@@ -419,10 +429,10 @@ const arrow = (d) => d == null ? '' : Math.abs(d) < 1e-9 ? '→' : d > 0 ? '▲'
 const fmtD = (d, dec) => d == null ? '—' : `${d > 0 ? '+' : ''}${d.toFixed(dec)}`;
 const themes = [
     theme('INFLATION IMPULSE', [
-        [`gold ${V('YH_GOLD', 0, '$')}, higher than ${pReal('YH_GOLD') ?? pOf('YH_GOLD')}% of its history even after adjusting for inflation`, (pReal('YH_GOLD') ?? pOf('YH_GOLD')) >= 90],
-        [`silver ${V('YH_SILVER', 1, '$')}, at the ${pReal('YH_SILVER') ?? pOf('YH_SILVER')}th percentile of its own history`, (pReal('YH_SILVER') ?? pOf('YH_SILVER')) >= 90],
-        [`copper ${V('PCOPPUSDM', 0, '$')}/tonne, at the ${pReal('PCOPPUSDM') ?? pOf('PCOPPUSDM')}th percentile`, (pReal('PCOPPUSDM') ?? pOf('PCOPPUSDM')) >= 90],
-        [`oil ${V('DCOILWTICO', 0, '$')}, expensive at the ${pReal('DCOILWTICO') ?? pOf('DCOILWTICO')}th percentile`, (pReal('DCOILWTICO') ?? pOf('DCOILWTICO')) >= 80],
+        [`gold ${V('YH_GOLD', 0, '$')}, higher than ${pReal('YH_GOLD') ?? pOf('YH_GOLD')}% of its history after adjusting for inflation, but ${trendWord(chgOf('YH_GOLD', 3))} over 3 months (${fmtD(chgOf('YH_GOLD', 3), 0)}%)`, (pReal('YH_GOLD') ?? pOf('YH_GOLD')) >= 90],
+        [`silver ${V('YH_SILVER', 1, '$')}, at the ${pReal('YH_SILVER') ?? pOf('YH_SILVER')}th percentile, ${trendWord(chgOf('YH_SILVER', 3))} over 3 months (${fmtD(chgOf('YH_SILVER', 3), 0)}%)`, (pReal('YH_SILVER') ?? pOf('YH_SILVER')) >= 90],
+        [`copper ${V('PCOPPUSDM', 0, '$')}/tonne, at the ${pReal('PCOPPUSDM') ?? pOf('PCOPPUSDM')}th percentile and ${trendWord(chgOf('PCOPPUSDM', 3))} (${fmtD(chgOf('PCOPPUSDM', 3), 0)}% over 3 months)`, (pReal('PCOPPUSDM') ?? pOf('PCOPPUSDM')) >= 90],
+        [`oil ${V('DCOILWTICO', 0, '$')}, at the ${pReal('DCOILWTICO') ?? pOf('DCOILWTICO')}th percentile, ${trendWord(chgOf('DCOILWTICO', 3))} over 3 months`, (pReal('DCOILWTICO') ?? pOf('DCOILWTICO')) >= 80],
         ['wheat or corn expensive after adjusting for inflation, which pushes up food prices', Math.max(pReal('YH_ZW') ?? -1, pReal('YH_ZC') ?? -1) >= 85],
         [`bond market expects ${V('T5YIFR', 2)}% inflation over the long run`, pOf('T5YIFR') >= 80],
         [`Eurozone inflation ${V('CP0000EZ19M086NEST')}%`, pOf('CP0000EZ19M086NEST') >= 85],
@@ -515,15 +525,27 @@ const ffNow = S('FEDFUNDS')?.latest;
 
 const PLAYS = [];
 if (has('INFLATION IMPULSE')) {
-    // Which commodities actually confirm, in real terms? The vehicles follow the evidence.
-    const metalsOn = Math.max(pReal('YH_GOLD') ?? -1, pReal('YH_SILVER') ?? -1, pReal('PCOPPUSDM') ?? -1) >= 85;
-    const oilOn = (pReal('DCOILWTICO') ?? pOf('DCOILWTICO') ?? 0) >= 70;
-    const grainsOn = Math.max(pReal('YH_ZW') ?? -1, pReal('YH_ZC') ?? -1) >= 85;
+    // A commodity only "confirms" if it is BOTH historically expensive AND still
+    // rising. Vehicles are only named if the ETF itself is holding up — miners
+    // falling while the metal is high is a warning, not an entry.
+    const conf = (id) => (pReal(id) ?? pOf(id) ?? 0) >= 85 && (chgOf(id, 3) ?? -99) > -3;
+    const metalsOn = conf('YH_GOLD') || conf('YH_SILVER') || conf('PCOPPUSDM');
+    const oilOn = (pReal('DCOILWTICO') ?? pOf('DCOILWTICO') ?? 0) >= 70 && (chgOf('DCOILWTICO', 3) ?? -99) > -3;
+    const grainsOn = conf('YH_ZW') || conf('YH_ZC');
+    const vehicleOk = (id) => (chgOf(id, 3) ?? -99) > -3;
     const vehicles = [
-        metalsOn ? 'metals: XME (miners), GDX (gold miners), XLB (materials)' : null,
-        oilOn ? 'energy: XLE, XOP' : null,
+        metalsOn && (vehicleOk('YH_XME') || vehicleOk('YH_GDX') || vehicleOk('YH_XLB'))
+            ? 'mining and materials shares: ' + [['YH_XME', 'XME'], ['YH_GDX', 'GDX'], ['YH_XLB', 'XLB']].filter(([id]) => vehicleOk(id)).map(([, t]) => t).join(', ') : null,
+        oilOn && (vehicleOk('YH_XLE') || vehicleOk('YH_XOP')) ? 'energy shares: XLE, XOP' : null,
         grainsOn ? 'agriculture exposure' : null,
-    ].filter(Boolean).join(' · ');
+    ].filter(Boolean).join('; ');
+    // Where the shares disagree with the commodity, say so plainly.
+    const divergences = [
+        (pReal('YH_GOLD') ?? 0) >= 85 && (chgOf('YH_GDX', 3) ?? 0) < -5
+            ? `gold is historically expensive but gold-mining shares (GDX) are down ${Math.abs(chgOf('YH_GDX', 3)).toFixed(0)}% over three months and ${Math.abs(chgOf('YH_GDX', 6) ?? 0).toFixed(0)}% over six, so equity investors are betting the metal price does not hold` : null,
+        (pReal('PCOPPUSDM') ?? 0) >= 85 && (chgOf('YH_XME', 3) ?? 0) < -5
+            ? `copper is still climbing while mining shares (XME) are down ${Math.abs(chgOf('YH_XME', 3)).toFixed(0)}% over three months, which usually means rising costs or doubt about the price lasting` : null,
+    ].filter(Boolean).join('; ');
     // Same yardstick for every commodity: inflation-adjusted level percentile
     // and inflation-adjusted 12-month change, so the comparison is visibly fair.
     const realChg12 = (id) => {
@@ -532,14 +554,19 @@ if (has('INFLATION IMPULSE')) {
         const now = r.pts[r.pts.length - 1][1], then = r.pts[r.pts.length - 13][1];
         return then ? (now / then - 1) * 100 : null;
     };
+    // Both windows, because a 3-month reading can call something "falling" when
+    // it bottomed weeks ago and has already turned.
+    const turns = [];
     const scoreboard = [['YH_GOLD', 'gold'], ['YH_SILVER', 'silver'], ['PCOPPUSDM', 'copper'], ['DCOILWTICO', 'oil'], ['YH_ZW', 'wheat'], ['YH_ZC', 'corn']]
         .map(([id, name]) => {
-            const p = pReal(id), c = realChg12(id);
+            const p = pReal(id), c3 = chgOf(id, 3), c1 = chgOf(id, 1);
             if (p == null) return null;
-            return `${name} ${p}th percentile${c == null ? '' : `, ${c >= 0 ? 'up' : 'down'} ${Math.abs(c).toFixed(0)}% over 12 months`}`;
+            if (c3 != null && c1 != null && c3 < -3 && c1 > 3) turns.push(`${name} has turned back up (${fmtD(c1, 0)}% in the past month after ${fmtD(c3, 0)}% over three)`);
+            return `${name}: ${p}th percentile on price, ${fmtD(c3, 0)}% over 3 months, ${fmtD(c1, 0)}% over the past month`;
         }).filter(Boolean).join('; ');
-    PLAYS.push([`Own the commodities that are actually rising${metalsOn && !oilOn ? ', which right now means metals and not oil' : ''}`,
-        `When money is losing value, physical things have historically held value better than cash. But buy the ones actually rising rather than the whole category. Every commodity below is measured the same way: its price adjusted for inflation, compared against its own full history, plus how much it has moved in the past year after that same adjustment. ${scoreboard}. So metals are at genuine extremes while oil, even though it has risen, is only mid-range compared with its own past — oil hit $112 in 2022 and about $140 in 2008, which is far more in today's money. Ways to own the rising ones: ${vehicles || 'none currently qualify'}. Ordinary stock ETFs avoid the borrowed-money risk of futures contracts. History says go with the trend rather than betting against a record high. ONE LIMITATION: this compares monthly averages, so a sharp move in the last week or two shows up late here. Check the live futures prices in Commodities above if something is happening in the news. SIGNS THIS IS OVER: technology and consumer stocks lead the market two weeks running, or the metals drop below the top 10% of their own inflation-adjusted history.`]);
+    const anyConfirmed = metalsOn || oilOn || grainsOn;
+    PLAYS.push([anyConfirmed ? 'Own only the commodities that are expensive AND still climbing' : 'Commodities are expensive but no longer climbing — that is not the same thing',
+        `When money is losing value, physical things have historically held value better than cash. But "historically expensive" and "going up right now" are two different measurements, and mixing them up is how people buy the top. Both are shown below: how the price compares with its own full history after adjusting for inflation, and which way it has actually moved, over three months and over the past month. ${scoreboard}. ${turns.length ? 'RECENTLY TURNED: ' + turns.join('; ') + '. A three-month number can call something falling when it bottomed weeks ago, so treat the shorter window as the newer information. ' : ''}${divergences ? 'WORTH NOTICING: ' + divergences + '. When mining shares fall while the metal stays high, the shares have historically been the better predictor of where the metal goes next, because miners live or die on the price they will get next year rather than today. ' : ''}Ways to own the ones still working: ${vehicles || 'none right now, because the shares tied to these commodities are all falling'}. Ordinary stock ETFs avoid the borrowed-money risk of futures contracts. ONE LIMITATION: this uses monthly averages, so a sharp move in the last week or two shows up late. Check the live prices in Commodities above if something is happening in the news. SIGNS THIS IS OVER: technology and consumer stocks lead the market two weeks running, or the metals drop below the top 10% of their own inflation-adjusted history.`]);
 }
 if (has('COMPLACENT PRICING')) PLAYS.push(['Get paid to wait, and buy protection while it is cheap',
     `Junk-rated companies currently pay only ${hyNow != null ? hyNow.toFixed(2) + '%' : '—'} more than the government to borrow. When that gap has been this small, the following few years delivered below-average returns, because investors were being paid almost nothing for taking risk. The textbook response is to keep most money in short-term Treasuries or a money-market fund${ffNow != null ? `, currently paying about ${ffNow.toFixed(1)}%` : ''}, and put a small amount in longer-term government bonds, which tend to rise when stocks fall. To be precise about who is calm here: it is lenders, not stock traders. That ${hyNow != null ? hyNow.toFixed(2) + '%' : ''} lending gap is at the ${pOf('BAMLH0A0HYM2') ?? '—'}th percentile since 1996, meaning bond investors see almost no chance of companies defaulting, while the VIX at ${S('VIXCLS') ? S('VIXCLS').latest.toFixed(1) : '—'} sits around the middle of its own range, so the stock market is not unusually relaxed. Protection against a credit event is priced cheaply precisely because lenders have stopped worrying. WHAT WOULD SAY MOVE MORE MONEY TO THE SAFE SIDE: weekly jobless claims above ${claimsTrig ?? '—'}k, versus ${claimsNow != null ? Math.round(claimsNow) + 'k' : '—'} now (that is the level where past labor markets had genuinely turned)${hyTrig ? `, or the lending gap widening past ${hyTrig}%, because that means lenders have started pricing real default risk` : ''}. SEPARATELY, WHAT WOULD SAY TAKE MORE RISK: consumer sentiment climbing above ${sentTrig ?? '—'} from ${sentNow != null ? sentNow.toFixed(1) : '—'}, since gloom lifting while people still have jobs has historically been a good time to own stocks.`]);
