@@ -923,6 +923,30 @@ ${[['Gold in US dollars', g], ['Gold in euros', e], ['Gold in yen', j], ['Gold i
 <h2>Currencies</h2><div class="cells">${cells('fx')}</div>
 <h2>Stock Indices</h2><div class="cells">${cells('idx')}</div>
 ${(() => {
+    // How much of the market is a handful of companies? Computed from the
+    // screener universe, which already holds every US listing over $50M.
+    let caps = null;
+    try {
+        const raw = JSON.parse(readFileSync(new URL('./data-screener/universe.json', import.meta.url), 'utf8'));
+        const arr = Array.isArray(raw) ? raw : (raw.rows || raw.universe || []);
+        caps = arr.map(r => ({ s: r.symbol || r.sym || r.ticker, c: +(r.marketCap || r.mktCap || r.cap || 0) }))
+            .filter(x => x.c > 0).sort((a, b) => b.c - a.c);
+    } catch (_) {}
+    if (!caps || caps.length < 100) return '';
+    const total = caps.reduce((s, x) => s + x.c, 0);
+    const share = (n) => caps.slice(0, n).reduce((s, x) => s + x.c, 0) / total * 100;
+    const bottomHalf = 100 - share(Math.floor(caps.length / 2));
+    const br = built['BREADTH'];
+    return `<div class="tablewrap" style="border:1px solid var(--line);border-radius:6px;background:var(--panel);padding:6px 12px;margin-top:8px;">
+<span style="color:var(--muted);">Of the $${(total / 1e12).toFixed(1)}T total value of ${caps.length.toLocaleString()} US-listed companies:</span>
+<b style="color:var(--accent);">the largest 5 are ${share(5).toFixed(1)}%</b> (${esc(caps.slice(0, 5).map(x => x.s).join(', '))}) ·
+<b style="color:var(--accent);">the largest 10 are ${share(10).toFixed(1)}%</b> ·
+<b style="color:var(--accent);">the largest 100 are ${share(100).toFixed(1)}%</b> ·
+<span style="color:var(--muted);">the smaller half of every listed company adds up to ${bottomHalf.toFixed(1)}%</span>
+${br ? `<div style="color:var(--muted);font-size:11px;margin-top:4px;">Breadth sits at the ${ord(br.p)} percentile of its own history since ${br.since}, meaning the average stock has rarely lagged the index by this much. Two consequences worth holding together: the index is a bet on a few companies rather than on the economy, and the wealth figures above are marked to these prices — they are what someone would get for the last share sold, not what could actually be realised at once.</div>` : ''}
+</div>`;
+})()}
+${(() => {
     // Heat tables: % change over 1m/3m/6m/12m for a group of ETF series
     const heatTable = (group, title, sub, note) => {
         const secs = payload.series.filter(s => s.group === group);
