@@ -417,6 +417,14 @@ const chgOf = (id, k) => {
     return a ? (b / a - 1) * 100 : null;
 };
 const trendWord = (c) => c == null ? 'flat' : c > 3 ? 'rising' : c < -3 ? 'falling' : 'flat';
+const rankOf = (name) => { const i = sec1mRank.indexOf(name); return i < 0 ? '—' : `${i + 1} of ${sec1mRank.length}`; };
+// 1st/2nd/3rd/4th — percentiles appear in prose constantly.
+const ord = (n) => {
+    if (n == null) return '—';
+    const v = Math.round(n), t = v % 100;
+    if (t >= 11 && t <= 13) return `${v}th`;
+    return `${v}${['th', 'st', 'nd', 'rd'][v % 10] || 'th'}`;
+};
 
 function theme(name, conds) {
     const met = conds.filter(c => c[1]);
@@ -428,62 +436,64 @@ const V = (id, dec = 1, pre = '', post = '') => { const v = S(id)?.latest; retur
 const arrow = (d) => d == null ? '' : Math.abs(d) < 1e-9 ? '→' : d > 0 ? '▲' : '▼';
 const fmtD = (d, dec) => d == null ? '—' : `${d > 0 ? '+' : ''}${d.toFixed(dec)}`;
 const themes = [
+    // Labels state the TEST plus the current reading, so they read correctly
+    // whether they appear under the met list or the NOT YET list.
     theme('INFLATION IMPULSE', [
-        [`gold ${V('YH_GOLD', 0, '$')}, higher than ${pReal('YH_GOLD') ?? pOf('YH_GOLD')}% of its history after adjusting for inflation, but ${trendWord(chgOf('YH_GOLD', 3))} over 3 months (${fmtD(chgOf('YH_GOLD', 3), 0)}%)`, (pReal('YH_GOLD') ?? pOf('YH_GOLD')) >= 90],
-        [`silver ${V('YH_SILVER', 1, '$')}, at the ${pReal('YH_SILVER') ?? pOf('YH_SILVER')}th percentile, ${trendWord(chgOf('YH_SILVER', 3))} over 3 months (${fmtD(chgOf('YH_SILVER', 3), 0)}%)`, (pReal('YH_SILVER') ?? pOf('YH_SILVER')) >= 90],
-        [`copper ${V('PCOPPUSDM', 0, '$')}/tonne, at the ${pReal('PCOPPUSDM') ?? pOf('PCOPPUSDM')}th percentile and ${trendWord(chgOf('PCOPPUSDM', 3))} (${fmtD(chgOf('PCOPPUSDM', 3), 0)}% over 3 months)`, (pReal('PCOPPUSDM') ?? pOf('PCOPPUSDM')) >= 90],
-        [`oil ${V('DCOILWTICO', 0, '$')}, at the ${pReal('DCOILWTICO') ?? pOf('DCOILWTICO')}th percentile, ${trendWord(chgOf('DCOILWTICO', 3))} over 3 months`, (pReal('DCOILWTICO') ?? pOf('DCOILWTICO')) >= 80],
-        ['wheat or corn expensive after adjusting for inflation, which pushes up food prices', Math.max(pReal('YH_ZW') ?? -1, pReal('YH_ZC') ?? -1) >= 85],
-        [`bond market expects ${V('T5YIFR', 2)}% inflation over the long run`, pOf('T5YIFR') >= 80],
-        [`Eurozone inflation ${V('CP0000EZ19M086NEST')}%`, pOf('CP0000EZ19M086NEST') >= 85],
-        ['energy stocks among the top 3 sectors this month', inTop3_1m('Energy')],
-        [`CPI inflation ${V('CPIAUCSL')}%, up ${fmtD(S('CPIAUCSL')?.d12, 1)} points over the past year`, (S('CPIAUCSL')?.d12 ?? 0) > 0.3],
+        [`gold in the top 10% of its own history after inflation — now ${ord(pReal('YH_GOLD') ?? pOf('YH_GOLD'))} percentile at ${V('YH_GOLD', 0, '$')}, ${fmtD(chgOf('YH_GOLD', 3), 0)}% over 3 months`, (pReal('YH_GOLD') ?? pOf('YH_GOLD')) >= 90],
+        [`silver in the top 10% — now ${ord(pReal('YH_SILVER') ?? pOf('YH_SILVER'))} percentile at ${V('YH_SILVER', 1, '$')}, ${fmtD(chgOf('YH_SILVER', 3), 0)}% over 3 months`, (pReal('YH_SILVER') ?? pOf('YH_SILVER')) >= 90],
+        [`copper in the top 10% — now ${ord(pReal('PCOPPUSDM') ?? pOf('PCOPPUSDM'))} percentile at ${V('PCOPPUSDM', 0, '$')}/tonne, ${fmtD(chgOf('PCOPPUSDM', 3), 0)}% over 3 months`, (pReal('PCOPPUSDM') ?? pOf('PCOPPUSDM')) >= 90],
+        [`oil in the top 20% of its history — now only ${ord(pReal('DCOILWTICO') ?? pOf('DCOILWTICO'))} percentile at ${V('DCOILWTICO', 0, '$')}`, (pReal('DCOILWTICO') ?? pOf('DCOILWTICO')) >= 80],
+        [`wheat or corn in the top 15% after inflation (food-price pressure) — now wheat ${ord(pReal('YH_ZW'))}, corn ${ord(pReal('YH_ZC'))}`, Math.max(pReal('YH_ZW') ?? -1, pReal('YH_ZC') ?? -1) >= 85],
+        [`long-run inflation expectations in the top 20% — now ${V('T5YIFR', 2)}%, the ${ord(pOf('T5YIFR'))} percentile`, pOf('T5YIFR') >= 80],
+        [`Eurozone inflation in the top 15% — now ${V('CP0000EZ19M086NEST')}%`, pOf('CP0000EZ19M086NEST') >= 85],
+        [`energy among the 3 best sectors this month — now ranked ${rankOf('Energy')}`, inTop3_1m('Energy')],
+        [`CPI inflation accelerating over the past year — now ${V('CPIAUCSL')}%, ${fmtD(S('CPIAUCSL')?.d12, 1)} points versus a year ago`, (S('CPIAUCSL')?.d12 ?? 0) > 0.3],
     ]),
     theme('TIGHT ECONOMY', [
-        [`jobless claims ${V('ICSA', 0, '', 'k')} per week, lower than ${100 - (pOf('ICSA') ?? 0)}% of all weeks on record`, pOf('ICSA') != null && pOf('ICSA') <= 15],
-        [`unemployment ${V('UNRATE')}%`, pOf('UNRATE') != null && pOf('UNRATE') <= 25],
-        [`economy growing ${V('GDPNOW')}% right now (Atlanta Fed estimate)`, (S('GDPNOW')?.latest ?? 0) >= 3],
-        [`payrolls growing ${V('PAYEMS')}% a year`, (S('PAYEMS')?.latest ?? 0) > 1.5],
+        [`jobless claims among the lowest 15% on record — now ${V('ICSA', 0, '', 'k')} a week`, pOf('ICSA') != null && pOf('ICSA') <= 15],
+        [`unemployment among the lowest 25% — now ${V('UNRATE')}%`, pOf('UNRATE') != null && pOf('UNRATE') <= 25],
+        [`economy growing at least 3% — now ${V('GDPNOW')}% (Atlanta Fed estimate)`, (S('GDPNOW')?.latest ?? 0) >= 3],
+        [`payrolls growing faster than 1.5% a year — now ${V('PAYEMS')}%`, (S('PAYEMS')?.latest ?? 0) > 1.5],
     ]),
     theme('COMPLACENT PRICING', [
-        [`junk-rated companies pay only ${V('BAMLH0A0HYM2', 2)}% more than Treasuries to borrow, the ${pOf('BAMLH0A0HYM2')}th percentile since 1996`, pOf('BAMLH0A0HYM2') != null && pOf('BAMLH0A0HYM2') <= 15],
-        [`VIX at ${V('VIXCLS')}, meaning options traders expect calm`, pOf('VIXCLS') != null && pOf('VIXCLS') <= 30],
-        [`10-year minus 2-year Treasury yield is ${V('T10Y2Y', 2)}%, not inverted`, (S('T10Y2Y')?.latest ?? 0) >= 0],
+        [`junk borrowing gap among the lowest 15% since 1996 — now ${V('BAMLH0A0HYM2', 2)}% over Treasuries, the ${ord(pOf('BAMLH0A0HYM2'))} percentile`, pOf('BAMLH0A0HYM2') != null && pOf('BAMLH0A0HYM2') <= 15],
+        [`VIX among the calmest 30% of its history — now ${V('VIXCLS')}, the ${ord(pOf('VIXCLS'))} percentile, so not especially calm`, pOf('VIXCLS') != null && pOf('VIXCLS') <= 30],
+        [`10-year minus 2-year Treasury yield not inverted — now ${V('T10Y2Y', 2)}%`, (S('T10Y2Y')?.latest ?? 0) >= 0],
     ]),
     theme('CONSUMER SQUEEZE', [
-        [`consumer sentiment ${V('UMCSENT')}, lower than ${100 - (pOf('UMCSENT') ?? 0)}% of all months since 1978`, pOf('UMCSENT') != null && pOf('UMCSENT') <= 10],
-        [`...while unemployment is only ${V('UNRATE')}%`, pOf('UNRATE') != null && pOf('UNRATE') <= 35],
-        [`30-year mortgage ${V('MORTGAGE30US', 2)}%`, pOf('MORTGAGE30US') >= 60],
+        [`sentiment among the lowest 10% since 1978 — now ${V('UMCSENT')}, the ${ord(pOf('UMCSENT'))} percentile`, pOf('UMCSENT') != null && pOf('UMCSENT') <= 10],
+        [`...while unemployment stays among the lowest 35% — now ${V('UNRATE')}%`, pOf('UNRATE') != null && pOf('UNRATE') <= 35],
+        [`30-year mortgage in the top 40% of its history — now ${V('MORTGAGE30US', 2)}%`, pOf('MORTGAGE30US') >= 60],
     ]),
     theme('CREDIT / VOL STRESS', [
-        [`junk borrowing costs jumped to ${V('BAMLH0A0HYM2', 2)}% over Treasuries`, pOf('BAMLH0A0HYM2') >= 80],
-        [`VIX spiking to ${V('VIXCLS')}`, pOf('VIXCLS') >= 85],
-        ['utilities or consumer staples leading the market this month', inTop3_1m('Consumer Staples') || inTop3_1m('Utilities')],
+        [`junk borrowing gap in the top 20% (lenders demanding much more) — now ${V('BAMLH0A0HYM2', 2)}%, the ${ord(pOf('BAMLH0A0HYM2'))} percentile`, pOf('BAMLH0A0HYM2') >= 80],
+        [`VIX in the top 15% (fear spiking) — now ${V('VIXCLS')}, the ${ord(pOf('VIXCLS'))} percentile`, pOf('VIXCLS') >= 85],
+        [`utilities or consumer staples among the 3 best sectors this month — now ranked ${rankOf('Utilities')} and ${rankOf('Consumer Staples')}`, inTop3_1m('Consumer Staples') || inTop3_1m('Utilities')],
     ]),
     theme('EASY MONEY', [
-        [`Fed has cut ${fmtD(fedDelta6, 2)} points over six months, to ${V('FEDFUNDS', 2)}%`, (ff && fedDelta6 != null) ? fedDelta6 < -0.4 : false],
-        [`Fed funds ${V('FEDFUNDS', 2)}%, below its historical middle`, pOf('FEDFUNDS') != null && pOf('FEDFUNDS') <= 50],
-        [`money supply growing ${V('M2SL')}% a year and accelerating`, (S('M2SL')?.d12 ?? 0) > 1],
+        [`Fed has cut more than 0.4 points over six months — actual change ${fmtD(fedDelta6, 2)} points, to ${V('FEDFUNDS', 2)}%`, (ff && fedDelta6 != null) ? fedDelta6 < -0.4 : false],
+        [`Fed funds below its historical middle — now ${V('FEDFUNDS', 2)}%, the ${ord(pOf('FEDFUNDS'))} percentile`, pOf('FEDFUNDS') != null && pOf('FEDFUNDS') <= 50],
+        [`money supply growth accelerating — now ${V('M2SL')}% a year, ${fmtD(S('M2SL')?.d12, 1)} points versus a year ago`, (S('M2SL')?.d12 ?? 0) > 1],
     ]),
     theme('LATE-CYCLE ROTATION', [
-        [`tech down ${Math.abs(sectorChg['Technology']?.m1 ?? 0).toFixed(1)}% over the past month`, (sectorChg['Technology']?.m1 ?? 0) < 0],
-        ['energy or bank stocks leading instead', inTop3_1m('Energy') || inTop3_1m('Financials')],
-        [`tech still up ${(sectorChg['Technology']?.m3 ?? 0).toFixed(1)}% over three months, so the shift is recent`, (sectorChg['Technology']?.m3 ?? -99) > 5],
+        [`tech down over the past month — actual ${fmtD(sectorChg['Technology']?.m1, 1)}%`, (sectorChg['Technology']?.m1 ?? 0) < 0],
+        [`energy or banks among the 3 best sectors — now ranked ${rankOf('Energy')} and ${rankOf('Financials')}`, inTop3_1m('Energy') || inTop3_1m('Financials')],
+        [`tech still up more than 5% across three months (so the shift is recent) — actual ${fmtD(sectorChg['Technology']?.m3, 1)}%`, (sectorChg['Technology']?.m3 ?? -99) > 5],
     ]),
     theme('FISCAL DOMINANCE', [
-        [`federal debt ${V('GFDEGDQ188S')}% of GDP`, pOf('GFDEGDQ188S') >= 90],
-        [`interest on that debt costs ${V('FYOIGDA188S', 2)}% of GDP, the ${pOf('FYOIGDA188S')}th percentile since 1940`, pOf('FYOIGDA188S') >= 75],
-        [`Fed cutting to ${V('FEDFUNDS', 2)}% despite that debt load`, pOf('GFDEGDQ188S') >= 90 && (ff && fedDelta6 != null ? fedDelta6 < 0 : false)],
-        [`gold ${V('YH_GOLD', 0, '$')} near records, which historically tracks distrust of currencies`, (pReal('YH_GOLD') ?? pOf('YH_GOLD')) >= 90],
-        [`foreign-held share of US debt fell ${fmtD(S('FORSHARE')?.d12, 1)} points over the past year, now ${V('FORSHARE')}%`, (S('FORSHARE')?.d12 ?? 0) < -0.5],
+        [`federal debt in the top 10% of its own history — now ${V('GFDEGDQ188S')}% of GDP`, pOf('GFDEGDQ188S') >= 90],
+        [`interest costs in the top 25% since 1940 — now ${V('FYOIGDA188S', 2)}% of GDP, the ${ord(pOf('FYOIGDA188S'))} percentile`, pOf('FYOIGDA188S') >= 75],
+        [`Fed cutting rates while debt sits at extremes — Fed funds ${V('FEDFUNDS', 2)}%, six-month change ${fmtD(fedDelta6, 2)}`, pOf('GFDEGDQ188S') >= 90 && (ff && fedDelta6 != null ? fedDelta6 < 0 : false)],
+        [`gold in the top 10% (distrust of currencies) — now ${ord(pReal('YH_GOLD') ?? pOf('YH_GOLD'))} percentile at ${V('YH_GOLD', 0, '$')}`, (pReal('YH_GOLD') ?? pOf('YH_GOLD')) >= 90],
+        [`foreign-held share of US debt falling over the past year — actual change ${fmtD(S('FORSHARE')?.d12, 1)} points, now ${V('FORSHARE')}%`, (S('FORSHARE')?.d12 ?? 0) < -0.5],
     ]),
     theme('K-SHAPED ECONOMY', [
-        [`richest 1% hold ${V('WFRBST01134')}% of all US wealth`, pOf('WFRBST01134') >= 90],
-        [`bottom 50% hold ${V('WFRBSB50215')}%`, pOf('WFRBSB50215') != null && pOf('WFRBSB50215') <= 10],
-        [`the top 1% hold ${V('WEALTHGAP')} times as much as the entire bottom half`, pOf('WEALTHGAP') >= 90],
-        [`workers' share of output at ${V('PRS85006173')} (2017 = 100), the lowest since records began in 1947`, pOf('PRS85006173') != null && pOf('PRS85006173') <= 15],
-        [`S&P 500 at ${V('YH_SPX', 0)} near record highs while sentiment sits at ${V('UMCSENT')}`, pOf('YH_SPX') >= 85 && pOf('UMCSENT') != null && pOf('UMCSENT') <= 15],
-        [`credit card delinquencies ${V('DRCCLACBS', 2)}% while lenders still charge companies only ${V('BAMLH0A0HYM2', 2)}% extra`, pOf('DRCCLACBS') >= 60 && pOf('BAMLH0A0HYM2') != null && pOf('BAMLH0A0HYM2') <= 15],
+        [`top 1% wealth share in the top 10% of its history — now ${V('WFRBST01134')}%, the ${ord(pOf('WFRBST01134'))} percentile`, pOf('WFRBST01134') >= 90],
+        [`bottom 50% share among its lowest 10% — now ${V('WFRBSB50215')}%, the ${ord(pOf('WFRBSB50215'))} percentile`, pOf('WFRBSB50215') != null && pOf('WFRBSB50215') <= 10],
+        [`the gap between them in the top 10% of its history — now the top 1% hold ${V('WEALTHGAP')} times the entire bottom half, the ${ord(pOf('WEALTHGAP'))} percentile`, pOf('WEALTHGAP') >= 90],
+        [`workers' share of output among its lowest 15% since 1947 — now ${V('PRS85006173')} (2017 = 100)`, pOf('PRS85006173') != null && pOf('PRS85006173') <= 15],
+        [`stocks near highs while sentiment near lows — S&P at ${V('YH_SPX', 0)} (${ord(pOf('YH_SPX'))} percentile), sentiment ${V('UMCSENT')} (${ord(pOf('UMCSENT'))})`, pOf('YH_SPX') >= 85 && pOf('UMCSENT') != null && pOf('UMCSENT') <= 15],
+        [`card delinquencies high while lenders stay relaxed — now ${V('DRCCLACBS', 2)}% delinquent (${ord(pOf('DRCCLACBS'))} percentile) against a ${V('BAMLH0A0HYM2', 2)}% lending gap`, pOf('DRCCLACBS') >= 60 && pOf('BAMLH0A0HYM2') != null && pOf('BAMLH0A0HYM2') <= 15],
     ]),
 ];
 const active = themes.filter(t => t.active).sort((a, b) => b.score - a.score);
@@ -562,14 +572,14 @@ if (has('INFLATION IMPULSE')) {
             const p = pReal(id), c3 = chgOf(id, 3), c1 = chgOf(id, 1);
             if (p == null) return null;
             if (c3 != null && c1 != null && c3 < -3 && c1 > 3) turns.push(`${name} has turned back up (${fmtD(c1, 0)}% in the past month after ${fmtD(c3, 0)}% over three)`);
-            return `${name}: ${p}th percentile on price, ${fmtD(c3, 0)}% over 3 months, ${fmtD(c1, 0)}% over the past month`;
+            return `${name}: ${ord(p)} percentile on price, ${fmtD(c3, 0)}% over 3 months, ${fmtD(c1, 0)}% over the past month`;
         }).filter(Boolean).join('; ');
     const anyConfirmed = metalsOn || oilOn || grainsOn;
     PLAYS.push([anyConfirmed ? 'Own only the commodities that are expensive AND still climbing' : 'Commodities are expensive but no longer climbing — that is not the same thing',
         `When money is losing value, physical things have historically held value better than cash. But "historically expensive" and "going up right now" are two different measurements, and mixing them up is how people buy the top. Both are shown below: how the price compares with its own full history after adjusting for inflation, and which way it has actually moved, over three months and over the past month. ${scoreboard}. ${turns.length ? 'RECENTLY TURNED: ' + turns.join('; ') + '. A three-month number can call something falling when it bottomed weeks ago, so treat the shorter window as the newer information. ' : ''}${divergences ? 'WORTH NOTICING: ' + divergences + '. When mining shares fall while the metal stays high, the shares have historically been the better predictor of where the metal goes next, because miners live or die on the price they will get next year rather than today. ' : ''}Ways to own the ones still working: ${vehicles || 'none right now, because the shares tied to these commodities are all falling'}. Ordinary stock ETFs avoid the borrowed-money risk of futures contracts. ONE LIMITATION: this uses monthly averages, so a sharp move in the last week or two shows up late. Check the live prices in Commodities above if something is happening in the news. SIGNS THIS IS OVER: technology and consumer stocks lead the market two weeks running, or the metals drop below the top 10% of their own inflation-adjusted history.`]);
 }
 if (has('COMPLACENT PRICING')) PLAYS.push(['Get paid to wait, and buy protection while it is cheap',
-    `Junk-rated companies currently pay only ${hyNow != null ? hyNow.toFixed(2) + '%' : '—'} more than the government to borrow. When that gap has been this small, the following few years delivered below-average returns, because investors were being paid almost nothing for taking risk. The textbook response is to keep most money in short-term Treasuries or a money-market fund${ffNow != null ? `, currently paying about ${ffNow.toFixed(1)}%` : ''}, and put a small amount in longer-term government bonds, which tend to rise when stocks fall. To be precise about who is calm here: it is lenders, not stock traders. That ${hyNow != null ? hyNow.toFixed(2) + '%' : ''} lending gap is at the ${pOf('BAMLH0A0HYM2') ?? '—'}th percentile since 1996, meaning bond investors see almost no chance of companies defaulting, while the VIX at ${S('VIXCLS') ? S('VIXCLS').latest.toFixed(1) : '—'} sits around the middle of its own range, so the stock market is not unusually relaxed. Protection against a credit event is priced cheaply precisely because lenders have stopped worrying. WHAT WOULD SAY MOVE MORE MONEY TO THE SAFE SIDE: weekly jobless claims above ${claimsTrig ?? '—'}k, versus ${claimsNow != null ? Math.round(claimsNow) + 'k' : '—'} now (that is the level where past labor markets had genuinely turned)${hyTrig ? `, or the lending gap widening past ${hyTrig}%, because that means lenders have started pricing real default risk` : ''}. SEPARATELY, WHAT WOULD SAY TAKE MORE RISK: consumer sentiment climbing above ${sentTrig ?? '—'} from ${sentNow != null ? sentNow.toFixed(1) : '—'}, since gloom lifting while people still have jobs has historically been a good time to own stocks.`]);
+    `Junk-rated companies currently pay only ${hyNow != null ? hyNow.toFixed(2) + '%' : '—'} more than the government to borrow. When that gap has been this small, the following few years delivered below-average returns, because investors were being paid almost nothing for taking risk. The textbook response is to keep most money in short-term Treasuries or a money-market fund${ffNow != null ? `, currently paying about ${ffNow.toFixed(1)}%` : ''}, and put a small amount in longer-term government bonds, which tend to rise when stocks fall. To be precise about who is calm here: it is lenders, not stock traders. That ${hyNow != null ? hyNow.toFixed(2) + '%' : ''} lending gap is at the ${ord(pOf('BAMLH0A0HYM2'))} percentile since 1996, meaning bond investors see almost no chance of companies defaulting, while the VIX at ${S('VIXCLS') ? S('VIXCLS').latest.toFixed(1) : '—'} sits around the middle of its own range, so the stock market is not unusually relaxed. Protection against a credit event is priced cheaply precisely because lenders have stopped worrying. WHAT WOULD SAY MOVE MORE MONEY TO THE SAFE SIDE: weekly jobless claims above ${claimsTrig ?? '—'}k, versus ${claimsNow != null ? Math.round(claimsNow) + 'k' : '—'} now (that is the level where past labor markets had genuinely turned)${hyTrig ? `, or the lending gap widening past ${hyTrig}%, because that means lenders have started pricing real default risk` : ''}. SEPARATELY, WHAT WOULD SAY TAKE MORE RISK: consumer sentiment climbing above ${sentTrig ?? '—'} from ${sentNow != null ? sentNow.toFixed(1) : '—'}, since gloom lifting while people still have jobs has historically been a good time to own stocks.`]);
 if (has('CREDIT / VOL STRESS')) PLAYS.push(['Buy into the panic gradually, never all at once',
     'Fear spikes and credit blowups have historically happened near market bottoms, not tops. The textbook approach is a written schedule (set dates, set amounts) buying broad, high-quality investments such as S&P 500 index funds and investment-grade bond funds. The reason to spread purchases out is simple: panics often get worse before they end, and nobody calls the bottom.']);
 if (has('CONSUMER SQUEEZE') && !has('CREDIT / VOL STRESS')) PLAYS.push(['A terrible mood alone has not been a reason to hide',
@@ -597,7 +607,7 @@ const valColor = (s) => {
 const extreme = (s) => s.p != null && (s.p >= 90 || s.p <= 10);
 
 const cells = (group) => payload.series.filter(s => s.group === group).map(s => `
-    <div class="cell" style="${extreme(s) ? 'box-shadow:inset 0 0 0 1px var(--warn);' : ''}" title="${esc(s.label)} — latest ${s.latest.toFixed(s.dec)}${s.unit}, 3-month change ${fmtD(s.d3, s.dec)}, 12-month change ${fmtD(s.d12, s.dec)}. ${s.p != null ? `At the ${s.p}th percentile of its own history since ${s.since}.` : ''} As of ${s.asOf}.">
+    <div class="cell" style="${extreme(s) ? 'box-shadow:inset 0 0 0 1px var(--warn);' : ''}" title="${esc(s.label)} — latest ${s.latest.toFixed(s.dec)}${s.unit}, 3-month change ${fmtD(s.d3, s.dec)}, 12-month change ${fmtD(s.d12, s.dec)}. ${s.p != null ? `At the ${ord(s.p)} percentile of its own history since ${s.since}.` : ''} As of ${s.asOf}.">
         <div class="cell-label">${esc(s.label)}${s.stale ? ' <span class="stale">as of ' + s.asOf + '</span>' : ''}</div>
         <div class="cell-value" style="color:${valColor(s)};">${s.unit === '$' ? '$' : ''}${s.latest.toFixed(s.dec)}${s.unit !== '$' ? s.unit : ''}${extreme(s) ? ' <span style="color:var(--warn);">◆' + s.p + '</span>' : ''}
             <span class="trend">${arrow(s.d3)}3m ${arrow(s.d12)}12m</span></div>
@@ -675,9 +685,9 @@ ${(() => {
 ${ex.length === 0 ? '<div style="padding:8px 12px;color:var(--muted);">Nothing at historical extremes today — a mid-range macro month. The unusual will announce itself here.</div>'
     : ex.map(s => `<div style="padding:6px 12px;border-bottom:1px solid var(--line);">
         <div style="display:flex;gap:10px;align-items:baseline;">
-            <span style="color:var(--warn);font-weight:700;white-space:nowrap;">◆ ${s.p}th pctile</span>
+            <span style="color:var(--warn);font-weight:700;white-space:nowrap;">◆ ${ord(s.p)} pctile</span>
             <span style="color:var(--ink);white-space:nowrap;font-weight:600;">${esc(s.label)} = ${s.latest.toFixed(s.dec)}${esc(s.unit)}</span>
-            <span style="color:var(--muted);">${s.p >= 90 ? 'higher' : 'lower'} than ${s.p >= 90 ? s.p : 100 - s.p}% of every month since ${s.since}. ${esc(note(s))}${built[s.id + '_R'] ? ` INFLATION-ADJUSTED: ${built[s.id + '_R'].p}th percentile of real history — ${built[s.id + '_R'].p >= 85 ? 'extreme even in today\'s dollars.' : built[s.id + '_R'].p >= 60 ? 'elevated but not unprecedented in real terms.' : 'ordinary in real terms — the nominal record is mostly inflation.'}` : ''}</span>
+            <span style="color:var(--muted);">${s.p >= 90 ? 'higher' : 'lower'} than ${s.p >= 90 ? s.p : 100 - s.p}% of every month since ${s.since}. ${esc(note(s))}${built[s.id + '_R'] ? ` INFLATION-ADJUSTED: ${ord(built[s.id + '_R'].p)} percentile of real history — ${built[s.id + '_R'].p >= 85 ? 'extreme even in today\'s dollars.' : built[s.id + '_R'].p >= 60 ? 'elevated but not unprecedented in real terms.' : 'ordinary in real terms — the nominal record is mostly inflation.'}` : ''}</span>
         </div>
         ${play(s) ? `<div style="margin:3px 0 1px 24px;color:var(--good);font-size:12px;">${esc(play(s))}</div>` : ''}
     </div>`).join('')}
@@ -686,11 +696,20 @@ ${ex.length === 0 ? '<div style="padding:8px 12px;color:var(--muted);">Nothing a
 <h2>Auto Desk Note <span style="color:var(--muted);text-transform:none;letter-spacing:0;">— what everything on this page adds up to, worked out by fixed rules. It only sees the numbers above: no news, no headlines, nothing that happened today. Educational, not advice.</span></h2>
 <div style="background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 0;">
 ${active.length === 0 ? '<div style="padding:8px 12px;color:var(--muted);">No strong macro theme detected — a mid-regime board.</div>' : ''}
-${active.map(t => `<div style="padding:5px 12px;border-bottom:1px solid var(--line);">
+${active.map(t => {
+    const missing = t.conds.filter(c => !c[1]);
+    return `<div style="padding:5px 12px;border-bottom:1px solid var(--line);">
     <span style="color:var(--accent);font-weight:700;">${esc(t.name)}</span>
     <span style="color:var(--muted);"> (${t.met.length}/${t.conds.length} signals)</span>
     <span style="color:var(--ink);"> — ${t.met.map(c => esc(c[0])).join('; ')}</span>
-</div>`).join('')}
+    ${missing.length ? `<div style="color:#6f6a5a;margin-top:2px;">NOT YET: ${missing.map(c => esc(c[0])).join('; ')}</div>` : ''}
+</div>`; }).join('')}
+${(() => {
+    const dormant = themes.filter(t => !t.active);
+    if (!dormant.length) return '';
+    return `<div style="padding:5px 12px;border-bottom:1px solid var(--line);color:#6f6a5a;">
+    <span style="font-weight:700;">NOT FIRING</span> — ${dormant.map(t => `${esc(t.name)} (${t.met.length}/${t.conds.length})`).join(', ')}. These need at least half their signals to appear above.</div>`;
+})()}
 ${tensions.map(([a, b, txt]) => `<div style="padding:5px 12px;border-bottom:1px solid var(--line);">
     <div><span style="color:var(--bad);font-weight:700;">DOESN'T ADD UP</span>
     <span style="color:var(--muted);"> ${esc(a)} vs ${esc(b)}</span></div>
