@@ -415,75 +415,75 @@ function theme(name, conds) {
 const pOf = (id) => S(id)?.p ?? null;
 const themes = [
     theme('INFLATION IMPULSE', [
-        ['gold in top decile (real terms where available)', (pReal('YH_GOLD') ?? pOf('YH_GOLD')) >= 90],
-        ['silver in top decile (real)', (pReal('YH_SILVER') ?? pOf('YH_SILVER')) >= 90],
-        ['copper in top decile (real)', (pReal('PCOPPUSDM') ?? pOf('PCOPPUSDM')) >= 90],
-        ['oil elevated (real terms, 80th+)', (pReal('DCOILWTICO') ?? pOf('DCOILWTICO')) >= 80],
-        ['grains elevated in real terms (food inflation)', Math.max(pReal('YH_ZW') ?? -1, pReal('YH_ZC') ?? -1) >= 85],
-        ['inflation expectations elevated (80th+)', pOf('T5YIFR') >= 80],
-        ['Eurozone inflation extreme', pOf('CP0000EZ19M086NEST') >= 85],
-        ['energy among 1-month sector leaders', inTop3_1m('Energy')],
-        ['CPI YoY rising over 12m', (S('CPIAUCSL')?.d12 ?? 0) > 0.3],
+        ['gold is in the top 10% of its own history (after adjusting for inflation)', (pReal('YH_GOLD') ?? pOf('YH_GOLD')) >= 90],
+        ['silver is in the top 10% of its own history', (pReal('YH_SILVER') ?? pOf('YH_SILVER')) >= 90],
+        ['copper is in the top 10% of its own history', (pReal('PCOPPUSDM') ?? pOf('PCOPPUSDM')) >= 90],
+        ['oil is expensive by historical standards', (pReal('DCOILWTICO') ?? pOf('DCOILWTICO')) >= 80],
+        ['wheat or corn is expensive, which feeds into food prices', Math.max(pReal('YH_ZW') ?? -1, pReal('YH_ZC') ?? -1) >= 85],
+        ['the market expects higher inflation over the coming years', pOf('T5YIFR') >= 80],
+        ['inflation in Europe is unusually high too', pOf('CP0000EZ19M086NEST') >= 85],
+        ['energy stocks are among the best performers this month', inTop3_1m('Energy')],
+        ['inflation has been speeding up over the past year', (S('CPIAUCSL')?.d12 ?? 0) > 0.3],
     ]),
     theme('TIGHT ECONOMY', [
-        ['jobless claims near historic lows (≤15th pctile)', pOf('ICSA') != null && pOf('ICSA') <= 15],
-        ['unemployment low (≤25th pctile)', pOf('UNRATE') != null && pOf('UNRATE') <= 25],
-        ['GDPNow ≥ 3%', (S('GDPNOW')?.latest ?? 0) >= 3],
-        ['payrolls growing > 1.5%/yr', (S('PAYEMS')?.latest ?? 0) > 1.5],
+        ['very few people are filing for unemployment benefits', pOf('ICSA') != null && pOf('ICSA') <= 15],
+        ['the unemployment rate is low by historical standards', pOf('UNRATE') != null && pOf('UNRATE') <= 25],
+        ['the economy is growing at 3% or better right now', (S('GDPNOW')?.latest ?? 0) >= 3],
+        ['companies are still adding jobs at a healthy pace', (S('PAYEMS')?.latest ?? 0) > 1.5],
     ]),
     theme('COMPLACENT PRICING', [
-        ['credit spreads near record tights (≤15th pctile)', pOf('BAMLH0A0HYM2') != null && pOf('BAMLH0A0HYM2') <= 15],
-        ['VIX subdued (≤30th pctile)', pOf('VIXCLS') != null && pOf('VIXCLS') <= 30],
-        ['curve not inverted', (S('T10Y2Y')?.latest ?? 0) >= 0],
+        ['lenders are charging risky companies almost nothing extra to borrow', pOf('BAMLH0A0HYM2') != null && pOf('BAMLH0A0HYM2') <= 15],
+        ['the stock market fear gauge is unusually calm', pOf('VIXCLS') != null && pOf('VIXCLS') <= 30],
+        ['the bond market is not signalling a recession', (S('T10Y2Y')?.latest ?? 0) >= 0],
     ]),
     theme('CONSUMER SQUEEZE', [
-        ['sentiment at generational lows (≤10th pctile)', pOf('UMCSENT') != null && pOf('UMCSENT') <= 10],
-        ['...while labor market is tight (unemployment ≤35th pctile)', pOf('UNRATE') != null && pOf('UNRATE') <= 35],
-        ['mortgage rates burdensome (≥60th pctile)', pOf('MORTGAGE30US') >= 60],
+        ['people feel worse about the economy than almost any time on record', pOf('UMCSENT') != null && pOf('UMCSENT') <= 10],
+        ['...even though jobs are still relatively easy to find', pOf('UNRATE') != null && pOf('UNRATE') <= 35],
+        ['mortgage rates are high enough to hurt', pOf('MORTGAGE30US') >= 60],
     ]),
     theme('CREDIT / VOL STRESS', [
-        ['credit spreads blowing out (≥80th pctile)', pOf('BAMLH0A0HYM2') >= 80],
-        ['VIX spiking (≥85th pctile)', pOf('VIXCLS') >= 85],
-        ['defensive sectors leading 1m', inTop3_1m('Consumer Staples') || inTop3_1m('Utilities')],
+        ['lenders suddenly want much more to lend to risky companies', pOf('BAMLH0A0HYM2') >= 80],
+        ['the stock market fear gauge is spiking', pOf('VIXCLS') >= 85],
+        ['safe-haven sectors are leading the market this month', inTop3_1m('Consumer Staples') || inTop3_1m('Utilities')],
     ]),
     theme('EASY MONEY', [
-        ['Fed cutting (−0.4% over 6m)', (ff && fedDelta6 != null) ? fedDelta6 < -0.4 : false],
-        ['policy rate below its historical median', pOf('FEDFUNDS') != null && pOf('FEDFUNDS') <= 50],
-        ['M2 growth accelerating', (S('M2SL')?.d12 ?? 0) > 1],
+        ['the Fed has been cutting interest rates', (ff && fedDelta6 != null) ? fedDelta6 < -0.4 : false],
+        ['interest rates are below their historical middle', pOf('FEDFUNDS') != null && pOf('FEDFUNDS') <= 50],
+        ['the amount of money in the system is growing faster', (S('M2SL')?.d12 ?? 0) > 1],
     ]),
     theme('LATE-CYCLE ROTATION', [
-        ['tech negative over 1m', (sectorChg['Technology']?.m1 ?? 0) < 0],
-        ['energy or financials leading 1m', inTop3_1m('Energy') || inTop3_1m('Financials')],
-        ['tech still a 3-month leader (leadership cracking, not gone)', (sectorChg['Technology']?.m3 ?? -99) > 5],
+        ['tech stocks have fallen over the past month', (sectorChg['Technology']?.m1 ?? 0) < 0],
+        ['energy or bank stocks are leading instead', inTop3_1m('Energy') || inTop3_1m('Financials')],
+        ['tech is still ahead over three months, so the shift is recent', (sectorChg['Technology']?.m3 ?? -99) > 5],
     ]),
     theme('FISCAL DOMINANCE', [
-        ['US debt/GDP in the top decile of its own history', pOf('GFDEGDQ188S') >= 90],
-        ['interest cost / GDP in its top quartile', pOf('FYOIGDA188S') >= 75],
-        ['Fed easing while debt is extreme (the repression combo)', pOf('GFDEGDQ188S') >= 90 && (ff && fedDelta6 != null ? fedDelta6 < 0 : false)],
-        ['gold in top decile (real) — the debasement hedge is bid', (pReal('YH_GOLD') ?? pOf('YH_GOLD')) >= 90],
-        ['foreign share of US debt falling over 12m', (S('FORSHARE')?.d12 ?? 0) < -0.5],
+        ['US government debt is near the highest it has ever been versus the economy', pOf('GFDEGDQ188S') >= 90],
+        ['interest payments are eating an unusually large share of the budget', pOf('FYOIGDA188S') >= 75],
+        ['the Fed is cutting rates even with debt this high', pOf('GFDEGDQ188S') >= 90 && (ff && fedDelta6 != null ? fedDelta6 < 0 : false)],
+        ['gold is near record highs, which often signals distrust of money', (pReal('YH_GOLD') ?? pOf('YH_GOLD')) >= 90],
+        ['foreign countries have been holding less US debt over the past year', (S('FORSHARE')?.d12 ?? 0) < -0.5],
     ]),
     theme('K-SHAPED ECONOMY', [
-        ['top-1% wealth share in the top decile of its history', pOf('WFRBST01134') >= 90],
-        ['bottom-50% share in the bottom decile', pOf('WFRBSB50215') != null && pOf('WFRBSB50215') <= 10],
-        ['wealth gap at record width (90th+ pctile)', pOf('WEALTHGAP') >= 90],
-        ['labor share of output near historic lows (≤15th pctile)', pOf('PRS85006173') != null && pOf('PRS85006173') <= 15],
-        ['stocks near highs while sentiment near lows (the split screen)', pOf('YH_SPX') >= 85 && pOf('UMCSENT') != null && pOf('UMCSENT') <= 15],
-        ['card delinquencies elevated while credit spreads stay tight', pOf('DRCCLACBS') >= 60 && pOf('BAMLH0A0HYM2') != null && pOf('BAMLH0A0HYM2') <= 15],
+        ['the richest 1% hold a near-record share of all wealth', pOf('WFRBST01134') >= 90],
+        ['the bottom half holds a near-record low share', pOf('WFRBSB50215') != null && pOf('WFRBSB50215') <= 10],
+        ['the gap between the two is near its widest ever', pOf('WEALTHGAP') >= 90],
+        ['workers are getting a near-record low share of what the economy produces', pOf('PRS85006173') != null && pOf('PRS85006173') <= 15],
+        ['stocks are near highs while public mood is near lows', pOf('YH_SPX') >= 85 && pOf('UMCSENT') != null && pOf('UMCSENT') <= 15],
+        ['people are falling behind on credit cards even though lenders seem relaxed', pOf('DRCCLACBS') >= 60 && pOf('BAMLH0A0HYM2') != null && pOf('BAMLH0A0HYM2') <= 15],
     ]),
 ];
 const active = themes.filter(t => t.active).sort((a, b) => b.score - a.score);
 const has = (n) => active.some(t => t.name === n);
 
 const TENSIONS = [
-    ['INFLATION IMPULSE', 'COMPLACENT PRICING', 'Metals and inflation gauges are shouting while credit whispers — one of them is mispricing the future. Historically, credit was the later (and more violent) one to admit it.'],
-    ['CONSUMER SQUEEZE', 'TIGHT ECONOMY', 'Jobs are plentiful but households are miserable — the signature of a cost-of-living regime, not a demand recession (2022 rhyme).'],
-    ['EASY MONEY', 'INFLATION IMPULSE', 'The Fed is easing into an inflation impulse — the 1970s stop-go echo. If sustained, it feeds the metals trade and forces a policy U-turn later.'],
-    ['LATE-CYCLE ROTATION', 'COMPLACENT PRICING', 'Leadership is rotating defensively while risk premia stay tiny — rotations that credit ignores have historically been the ones worth respecting.'],
-    ['FISCAL DOMINANCE', 'COMPLACENT PRICING', 'The debt math is flashing while term premia and credit spreads price serenity — the bond market is historically the LAST to reprice fiscal risk, and it does it in lurches (1994, 2022, UK gilts).'],
-    ['FISCAL DOMINANCE', 'INFLATION IMPULSE', 'Heavy debt + an inflation impulse is the resolution mechanism working as designed — inflation IS how war-level debts got paid down. The textbook stops expecting the Fed to fully win.'],
-    ['K-SHAPED ECONOMY', 'TIGHT ECONOMY', 'Full employment beside record wealth concentration — "the consumer is fine" means the top decile is fine; the median household is renting its resilience from credit cards.'],
-    ['K-SHAPED ECONOMY', 'CONSUMER SQUEEZE', 'Record-low sentiment beside record concentration: the misery is real but unevenly distributed. Aggregate spending can hold up while the bottom half buckles — until layoffs bridge the gap.'],
+    ['INFLATION IMPULSE', 'COMPLACENT PRICING', 'Commodity prices are high and inflation gauges are rising, but bond investors are charging almost nothing extra to lend to risky companies. Both cannot be right. When these two have disagreed in the past, the bond market was usually the one that eventually changed its mind, and it tended to change fast.'],
+    ['CONSUMER SQUEEZE', 'TIGHT ECONOMY', 'Almost everyone who wants a job has one, but people say they feel terrible about the economy. That combination usually means the problem is the cost of living, not unemployment. 2022 looked like this: hiring was strong and people were miserable because prices were high.'],
+    ['EASY MONEY', 'INFLATION IMPULSE', 'The Fed is cutting rates at the same time inflation pressure is building. This is what went wrong in the 1970s: the Fed eased too early, inflation came back, and they had to reverse and raise rates much harder later. While it lasts, that mix has historically been good for gold and commodities.'],
+    ['LATE-CYCLE ROTATION', 'COMPLACENT PRICING', 'Money is quietly moving out of tech and into safer, older-economy sectors, but bond investors are still acting like nothing is wrong. When the stock market shifts like this and credit stays calm, the stock market has usually been the one that spotted the problem first.'],
+    ['FISCAL DOMINANCE', 'COMPLACENT PRICING', 'Government debt and interest costs are at historic extremes, but lenders are still charging very little to hold government bonds. The bond market tends to ignore debt problems for years and then reprice them all at once, as it did in 1994 and in the UK pension crisis of 2022.'],
+    ['FISCAL DOMINANCE', 'INFLATION IMPULSE', 'Very large government debt plus rising inflation is, historically, how big debts actually get dealt with: inflation shrinks what the debt is worth in real terms. This is a reason to be skeptical of the assumption that the Fed will bring inflation all the way back down and keep it there.'],
+    ['K-SHAPED ECONOMY', 'TIGHT ECONOMY', 'Unemployment is low, and at the same time wealth is unusually concentrated at the top. So when the news says the consumer is holding up, that mostly describes wealthier households. The bottom half is leaning on credit cards to keep up.'],
+    ['K-SHAPED ECONOMY', 'CONSUMER SQUEEZE', 'People report feeling terrible while wealth sits concentrated at the top. Total spending can still look healthy because high earners keep spending, even while lower-income households struggle. What usually ends that split is layoffs.'],
 ];
 const tensions = TENSIONS.filter(([a, b]) => has(a) && has(b));
 
@@ -508,26 +508,26 @@ if (has('INFLATION IMPULSE')) {
         grainsOn ? 'agriculture exposure' : null,
     ].filter(Boolean).join(' · ');
     const notConfirming = [
-        !oilOn ? `oil is NOT confirming (real oil at the ${pReal('DCOILWTICO') ?? '?'}th percentile — historically cheap), so energy (XLE) lacks the same tailwind` : null,
-        !grainsOn ? 'grains quiet in real terms' : null,
+        !oilOn ? `oil is NOT rising once you adjust for inflation (it sits at the ${pReal('DCOILWTICO') ?? '?'}th percentile of its own history, which is cheap), so oil stocks do not have the same wind behind them` : null,
+        !grainsOn ? 'wheat and corn are quiet after adjusting for inflation' : null,
     ].filter(Boolean).join('; ');
-    PLAYS.push([`Long the CONFIRMED part of the reflation trend${metalsOn && !oilOn ? ' — metals-specific, not broad-commodity' : ''}`,
-        `Hard assets = physical-thing investments that hold value while money loses it. But follow the evidence, not the category: confirming in inflation-adjusted terms → ${vehicles || 'nothing currently'}. ${notConfirming ? 'NOT confirming: ' + notConfirming + '.' : ''} Equity ETFs give the exposure without futures margin risk. Ride WITH the momentum; never short the records. EXIT CUES: Technology/Discretionary back in the 1-month sector top-3 for two consecutive weeks, or the confirming commodity dropping out of its real-terms top decile.`]);
+    PLAYS.push([`Own the commodities that are actually rising${metalsOn && !oilOn ? ', which right now means metals and not oil' : ''}`,
+        `When money is losing value, physical things (metals, oil, crops) have historically held value better than cash. But it pays to check which ones are actually going up after adjusting for inflation, instead of buying the whole category. Currently rising: ${vehicles || 'nothing'}. ${notConfirming ? 'Currently NOT rising: ' + notConfirming + '.' : ''} Owning these through ordinary stock ETFs avoids the borrowed-money risk that comes with futures contracts. History says go with the trend rather than betting against a record high. SIGNS THIS IS OVER: technology and consumer stocks lead the market two weeks running, or the metals drop out of the top 10% of their own inflation-adjusted history.`]);
 }
-if (has('COMPLACENT PRICING')) PLAYS.push(['Carry barbell + cheap insurance',
-    `Bulk in T-bills/money-market${ffNow != null ? ` (currently pays ~${ffNow.toFixed(1)}%)` : ''} — e.g., a broker money-market fund or a T-bill ETF (SGOV/BIL-type). Small slice in quality duration (IEF/TLT-type) as the crash hedge — insurance is cheapest exactly when spreads sit in their bottom decile. TRIPWIRES TO ACT BIGGER (computed from today's levels): jobless claims rising above ~${claimsTrig ?? '—'}k (=+18% off the low)${hyTrig ? `, HY spreads above ~${hyTrig}%` : ''}${sentTrig ? `, sentiment recovering above ~${sentTrig}` : ''}.`]);
-if (has('CREDIT / VOL STRESS')) PLAYS.push(['Scale into panic, slowly',
-    'Spread blowouts and VIX spikes historically clustered near bottoms, not tops. Textbook: a written schedule (fixed dates, fixed amounts) buying broad quality — S&P index funds, investment-grade credit (LQD-type) — never all at once; panics can double first.']);
-if (has('CONSUMER SQUEEZE') && !has('CREDIT / VOL STRESS')) PLAYS.push(['Respect the sentiment trough',
-    `Record-low sentiment with an intact labor market historically favored patient broad-index accumulation (fixed monthly DCA) over hiding — the misery is largely priced. Add faster if sentiment turns up${sentTrig ? ` (above ~${sentTrig})` : ''} while claims stay low.`]);
-if (has('FISCAL DOMINANCE')) PLAYS.push(['Financial repression playbook',
-    `When debt/GDP sits at war-era extremes, the historical exit was a package: growth doing the heavy lifting, inflation quietly outrunning capped-ish rates (bondholders paying), and high top-rate taxation holding the primary balance — not default, not austerity. The textbook positions for the LONG version of that: structural gold/real-asset allocation (the WSR gold lesson, real edition), T-bills over long nominal bonds (bills reprice, bonds absorb the loss), TIPS over nominals, skepticism whenever "the Fed will crush inflation completely" is consensus — and, at today's concentration extremes, treating top-end tax shifts as a live policy lever, not a tail. REGIME-END CUES: primary deficit actually shrinking, or interest/GDP rolling over for 2+ years.`]);
-if (has('K-SHAPED ECONOMY')) PLAYS.push(['Read consumption through asset prices (K-shape lens)',
-    `With wealth this concentrated, aggregate consumption is a derivative of the stock market, not of paychecks — the textbook treats equity drawdowns as a LEADING consumer indicator (spending follows within a quarter) and distrusts "resilient consumer" narratives built on averages. Positioning grammar: the luxury+discount barbell over the middle-income basket (watch XRT internals), subprime/card delinquencies as the early-warning wire, and populist policy (tariffs, transfers, wealth taxes) priced as base case, not tail. REGIME-END CUE: labor share turning up + the wealth gap narrowing for 2+ quarters.`]);
-if (has('EASY MONEY') && !has('INFLATION IMPULSE')) PLAYS.push(['Early-cycle duration + cyclicals',
-    'Cuts without inflation = the friendly regime: duration longs (IEF/TLT-type) and rate-sensitive cyclicals — banks (KBE), regional banks (KRE), homebuilders (XHB/ITB), all tracked in the Industries table — historically led from here.']);
-if (!PLAYS.length) PLAYS.push(['Nothing clever',
-    'No strong theme detected — mid-regime. Textbook says boring: broad exposure, carry on cash, wait for the board to speak.']);
+if (has('COMPLACENT PRICING')) PLAYS.push(['Get paid to wait, and buy protection while it is cheap',
+    `Investors are accepting very little extra return for taking risk right now, which historically meant modest rewards ahead. The textbook response is to keep most money somewhere safe that still pays${ffNow != null ? ` (short-term Treasuries or a money-market fund, currently around ${ffNow.toFixed(1)}%)` : ' (short-term Treasuries or a money-market fund)'}, and put a small amount into longer-term government bonds, which tend to rise when stocks fall. That protection is cheapest exactly when everyone is calm, like now. WHAT WOULD SAY ACT BIGGER (these numbers come from today's readings): weekly jobless claims rising above about ${claimsTrig ?? '—'}k${hyTrig ? `, or the extra yield on risky corporate bonds rising above about ${hyTrig}%` : ''}${sentTrig ? `, or consumer sentiment recovering above about ${sentTrig}` : ''}.`]);
+if (has('CREDIT / VOL STRESS')) PLAYS.push(['Buy into the panic gradually, never all at once',
+    'Fear spikes and credit blowups have historically happened near market bottoms, not tops. The textbook approach is a written schedule (set dates, set amounts) buying broad, high-quality investments such as S&P 500 index funds and investment-grade bond funds. The reason to spread purchases out is simple: panics often get worse before they end, and nobody calls the bottom.']);
+if (has('CONSUMER SQUEEZE') && !has('CREDIT / VOL STRESS')) PLAYS.push(['A terrible mood alone has not been a reason to hide',
+    `When people felt this bad but the job market was still intact, buying a fixed amount of a broad index every month historically worked better than sitting out, because the gloom was already reflected in prices. A reason to move faster would be sentiment turning up${sentTrig ? ` (above roughly ${sentTrig})` : ''} while jobless claims stay low.`]);
+if (has('FISCAL DOMINANCE')) PLAYS.push(['How governments have actually worked off debts this large',
+    `After World War 2, the US owed more than the entire economy produced in a year, and it never defaulted or slashed spending. The debt shrank because the economy grew, because inflation ran above the interest rates being paid (which quietly cost bondholders), and because taxes on top earners stayed high. If something similar happens again, the textbook lessons are: gold and other real assets tend to do well, short-term Treasuries handle inflation better than long-term bonds (short-term ones reprice quickly, long-term ones absorb the loss), inflation-protected bonds beat regular ones, and it is worth doubting confident claims that the Fed will fully defeat inflation. Given how concentrated wealth is today, higher taxes on top earners are a realistic possibility rather than a fringe one. SIGNS THIS IS OVER: the government's deficit genuinely shrinking, or interest costs falling for two years or more.`]);
+if (has('K-SHAPED ECONOMY')) PLAYS.push(['Watch the stock market to predict consumer spending',
+    `When wealth is this concentrated, a large share of all spending comes from households that own stocks. That flips the usual logic: the stock market becomes an early warning for consumer spending, because when portfolios fall, spending tends to follow within a few months. It also means "the consumer is resilient" headlines based on national averages can be misleading. Things worth watching: expensive brands and deep-discount stores tend to hold up better than middle-of-the-road retailers, credit card and subprime loan delinquencies give the earliest warning that lower-income households are breaking, and policies aimed at redistribution (tariffs, transfers, tax changes) become likelier than usual. SIGNS THIS IS OVER: workers' share of the economy rising and the wealth gap narrowing for two quarters or more.`]);
+if (has('EASY MONEY') && !has('INFLATION IMPULSE')) PLAYS.push(['The friendly setup: rate cuts without inflation',
+    'Rate cuts when inflation is not a problem is historically the easiest environment for investors. What has typically led from here: longer-term government bonds, and the stocks most helped by cheaper borrowing, such as banks, regional banks, and homebuilders. All of those are tracked in the Industries table below.']);
+if (!PLAYS.length) PLAYS.push(['Nothing worth doing right now',
+    'No strong pattern in the data at the moment. The textbook answer for that is boring on purpose: stay broadly invested, keep cash earning interest, and wait until the numbers actually say something.']);
 const deskPlays = PLAYS.slice(0, 2);
 const arrow = (d) => d == null ? '' : Math.abs(d) < 1e-9 ? '→' : d > 0 ? '▲' : '▼';
 const fmtD = (d, dec) => d == null ? '—' : `${d > 0 ? '+' : ''}${d.toFixed(dec)}`;
@@ -631,7 +631,7 @@ ${ex.length === 0 ? '<div style="padding:8px 12px;color:var(--muted);">Nothing a
     </div>`).join('')}
 </div>`;
 })()}
-<h2>Auto Desk Note <span style="color:var(--muted);text-transform:none;letter-spacing:0;">— rule-generated synthesis of the whole board. Frozen reasoning: blind to news, headlines, and anything novel. Educational, not advice.</span></h2>
+<h2>Auto Desk Note <span style="color:var(--muted);text-transform:none;letter-spacing:0;">— what everything on this page adds up to, worked out by fixed rules. It only sees the numbers above: no news, no headlines, nothing that happened today. Educational, not advice.</span></h2>
 <div style="background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 0;">
 ${active.length === 0 ? '<div style="padding:8px 12px;color:var(--muted);">No strong macro theme detected — a mid-regime board.</div>' : ''}
 ${active.map(t => `<div style="padding:5px 12px;border-bottom:1px solid var(--line);">
@@ -640,12 +640,12 @@ ${active.map(t => `<div style="padding:5px 12px;border-bottom:1px solid var(--li
     <span style="color:var(--ink);"> — ${t.met.map(c => esc(c[0])).join('; ')}</span>
 </div>`).join('')}
 ${tensions.map(([a, b, txt]) => `<div style="padding:5px 12px;border-bottom:1px solid var(--line);">
-    <span style="color:var(--bad);font-weight:700;">TENSION</span>
-    <span style="color:var(--muted);"> ${esc(a)} vs ${esc(b)}:</span>
-    <span style="color:var(--ink);"> ${esc(txt)}</span>
+    <div><span style="color:var(--bad);font-weight:700;">DOESN'T ADD UP</span>
+    <span style="color:var(--muted);"> ${esc(a)} vs ${esc(b)}</span></div>
+    <div style="color:var(--ink);">${esc(txt)}</div>
 </div>`).join('')}
 ${deskPlays.map(([title, body], i) => `<div style="padding:6px 12px;${i < deskPlays.length - 1 ? 'border-bottom:1px solid var(--line);' : ''}">
-    <span style="color:var(--good);font-weight:700;">TEXTBOOK PLAY ${i + 1}: ${esc(title)}</span>
+    <span style="color:var(--good);font-weight:700;">WHAT THE TEXTBOOKS SAY ${i + 1}: ${esc(title)}</span>
     <div style="color:var(--ink);margin-top:2px;">${esc(body)}</div>
 </div>`).join('')}
 </div>
