@@ -850,6 +850,46 @@ ${done.slice(-8).reverse().map(f => `<div style="padding:5px 12px;border-bottom:
 ${payload.series.some(s => s.group === 'ineq') ? `<h2>Wealth &amp; Inequality <span style="color:var(--muted);text-transform:none;letter-spacing:0;">— the slow structural dials: who holds the wealth shapes how every fast indicator behaves</span></h2>
 <div class="cells">${cells('ineq')}</div>` : ''}
 ${(() => {
+    // Housing affordability has two separate costs and they moved opposite ways:
+    // the monthly payment (paid out of income) and the down payment (paid out of
+    // savings). Only the second one requires wealth you already have.
+    const priceObs = load('MSPUS'), incObs = load('MEHOINUSA646N'), rateObs = load('MORTGAGE30US');
+    if (!priceObs || !incObs || !rateObs) return '';
+    const lastOf = (o) => o[o.length - 1];
+    const atYear = (o, y) => { let b = null; for (const r of o) if (r.d.slice(0, 4) <= String(y)) b = r; return b; };
+    const monthly = (p, ratePct) => {
+        const loan = p * 0.8, r = ratePct / 100 / 12, n = 360;
+        return r <= 0 ? loan / n : loan * r / (1 - Math.pow(1 + r, -n));
+    };
+    const row = (label, p, i, rt) => {
+        const m = monthly(p, rt);
+        return { label, p, i, rt, m, pti: m * 12 / i * 100, dti: p * 0.2 / i * 100 };
+    };
+    const years = [1985, 1995, 2005, 2015, 2021];
+    const rows = years.map(y => {
+        const p = atYear(priceObs, y), i = atYear(incObs, y), rt = atYear(rateObs, y);
+        return (p && i && rt) ? row(String(y), p.v, i.v, rt.v) : null;
+    }).filter(Boolean);
+    const pL = lastOf(priceObs), iL = lastOf(incObs), rL = lastOf(rateObs);
+    rows.push(row('now', pL.v, iL.v, rL.v));
+    const worst = Math.max(...rows.map(r => r.dti));
+    const cellFor = (v, hi) => `<td style="color:${v >= hi ? 'var(--bad)' : v >= hi * 0.8 ? 'var(--warn)' : 'var(--good)'};font-variant-numeric:tabular-nums;">${v.toFixed(0)}%</td>`;
+    return `<div class="tablewrap" style="border:1px solid var(--line);border-radius:6px;background:var(--panel);overflow-x:auto;margin-top:8px;">
+<table><thead><tr><th>Buying the median home</th><th>Price</th><th>Mortgage rate</th><th>Monthly payment</th><th>Payment vs income</th><th>Down payment vs income</th></tr></thead><tbody>
+${rows.map(r => `<tr${r.label === 'now' ? ' style="background:rgba(232,178,60,0.07);"' : ''}>
+  <td style="text-align:left;color:${r.label === 'now' ? 'var(--accent)' : 'var(--ink)'};">${esc(r.label)}</td>
+  <td style="font-variant-numeric:tabular-nums;">$${Math.round(r.p).toLocaleString()}</td>
+  <td style="font-variant-numeric:tabular-nums;">${r.rt.toFixed(2)}%</td>
+  <td style="font-variant-numeric:tabular-nums;">$${Math.round(r.m).toLocaleString()}</td>
+  ${cellFor(r.pti, 30)}${cellFor(r.dti, worst * 0.95)}
+</tr>`).join('')}
+</tbody></table>
+<div style="padding:5px 10px;font-size:11px;color:var(--muted);">Assumes 20% down over 30 years; income is the median household's, which lags (latest ${iL.d.slice(0, 4)}).
+The two right-hand columns tell different stories. The monthly payment is paid out of a salary, and at ${rows[rows.length - 1].pti.toFixed(0)}% it is high but was worse in 1985 when mortgage rates were ${rows[0].rt.toFixed(0)}%.
+The down payment is paid out of savings you already have, and it has gone from ${rows[0].dti.toFixed(0)}% of a year's income to ${rows[rows.length - 1].dti.toFixed(0)}%. That is the part that requires wealth rather than earnings, which is why it decides who can buy.</div>
+</div>`;
+})()}
+${(() => {
     let debt = null;
     try { debt = JSON.parse(readFileSync(new URL('./debt.json', import.meta.url), 'utf8')); } catch (_) {}
     const hasCells = payload.series.some(s => s.group === 'debt');

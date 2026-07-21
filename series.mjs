@@ -92,6 +92,10 @@ export const SERIES = [
     // changes hands; investment share = how much output goes into building things.
     { id: 'M2V',           label: 'Money Velocity (M2)',              unit: '',  kind: 'level', dec: 2, group: 'ineq', optional: true },
     { id: 'A006RE1Q156NBEA', label: 'Investment Share of GDP',        unit: '%', kind: 'level', dec: 1, group: 'ineq', optional: true },
+    { id: 'RHORUSQ156N',   label: 'Homeownership Rate',               unit: '%', kind: 'level', dec: 1, group: 'ineq', optional: true },
+    // Inputs for the housing affordability panel (nominal, so the ratio is fair)
+    { id: 'MSPUS',         label: 'Median Home Sale Price',           unit: '$', kind: 'level', dec: 0, group: 'meta', optional: true },
+    { id: 'MEHOINUSA646N', label: 'Median Household Income',          unit: '$', kind: 'level', dec: 0, group: 'meta', optional: true },
     // ── Sovereign debt (US structure; world levels come from debt.json/IMF) ──
     { id: 'GFDEGDQ188S', label: 'US Federal Debt / GDP',        unit: '%', kind: 'level', dec: 1, group: 'debt', optional: true },
     { id: 'FYOIGDA188S', label: 'US Interest Cost / GDP',       unit: '%', kind: 'level', dec: 2, group: 'debt', optional: true },
