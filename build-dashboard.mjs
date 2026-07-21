@@ -696,7 +696,7 @@ const extreme = (s) => s.p != null && (s.p >= 90 || s.p <= 10);
 const cells = (group) => payload.series.filter(s => s.group === group).map(s => `
     <div class="cell" style="${extreme(s) ? 'box-shadow:inset 0 0 0 1px var(--warn);' : ''}" title="${esc(s.label)} — latest ${s.latest.toFixed(s.dec)}${s.unit}, 3-month change ${fmtD(s.d3, s.dec)}, 12-month change ${fmtD(s.d12, s.dec)}. ${s.p != null ? `At the ${ord(s.p)} percentile of its own history since ${s.since}.` : ''} As of ${s.asOf}.">
         <div class="cell-label">${esc(s.label)}${s.stale ? ' <span class="stale">as of ' + s.asOf + '</span>' : ''}</div>
-        <div class="cell-value" style="color:${valColor(s)};">${s.unit === '$' ? '$' : ''}${s.latest.toFixed(s.dec)}${s.unit !== '$' ? s.unit : ''}${extreme(s) ? ' <span style="color:var(--warn);">◆' + s.p + '</span>' : ''}
+        <div class="cell-value" style="color:${valColor(s)};">${s.unit === '$' ? '$' : ''}${s.latest.toFixed(s.dec)}${s.unit !== '$' ? s.unit : ''}${s.p != null ? ` <span style="font-size:11px;font-weight:400;color:${extreme(s) ? 'var(--warn)' : 'var(--muted)'};">${extreme(s) ? '◆' : ''}${ord(s.p)}</span>` : ''}
             <span class="trend">${arrow(s.d3)}3m ${arrow(s.d12)}12m</span></div>
     </div>`).join('');
 
@@ -753,6 +753,10 @@ details summary { cursor:pointer; color:var(--muted); margin:14px 0 6px; }
 </div>
 <div class="chips">
   ${chips.map(([label, on, tip]) => `<span class="chip ${on ? 'on' : ''}" title="${esc(tip)}">${on ? '● ' : '○ '}${esc(label)}</span>`).join('')}
+</div>
+<div style="color:var(--muted);font-size:11px;margin:-4px 0 10px;">
+  The small grey number beside each reading is its percentile against its own full history: 50th is typical, 90th means higher than 90% of all months on record, 10th means lower than 90% of them.
+  A ◆ and a border mark the top or bottom 10%. Colour shows whether high is good or bad for that particular series.
 </div>
 ${(() => {
     const ex = payload.series.filter(s => ['us', 'mkt', 'world'].includes(s.group) && extreme(s))
