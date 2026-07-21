@@ -76,6 +76,7 @@ const DIR = {
     WFRBST01134: 'bad', WFRBSB50215: 'good', PRS85006173: 'good', MEHOINUSA672N: 'good',
     SIPOVGINIUSA: 'bad', WEALTHGAP: 'bad', GFDEGDQ188S: 'bad', FYOIGDA188S: 'bad',
     WFRBSTP1300: 'bad', WFRBST01122: 'bad', A006RE1Q156NBEA: 'good', WEALTHGDP: 'bad',
+    RENTWAGE: 'bad',
 };
 
 // Historical tendencies at extremes — study prompts with base rates, not signals.
@@ -132,6 +133,8 @@ const EXTREME_NOTES = {
         playLow: 'Textbook: discount retail over mid-tier; subprime credit is the early-warning short when claims turn; transfer-heavy fiscal responses become the base case in any downturn.', playHigh: 'Textbook: broad consumer resilience — the median-consumer basket works.' },
     PRS85006173: { low: 'Labor share of output near historic lows — capital is taking a record slice: corporate margins are fat but politically exposed (minimum-wage pushes, unionization, tax shifts).', high: 'Labor share elevated — wages eating into margins; historically a late-cycle profit-squeeze marker.',
         playLow: 'Textbook: fat-margin regimes support equities until labor or policy claws it back — the turn signals are wage prints accelerating and unionization waves.', playHigh: 'Textbook: margin-compression era — favor pricing power over labor-heavy business models.' },
+    RENTWAGE: { high: 'Rent is taking more hours of work to cover than at almost any point in the series. This is the cost-of-living squeeze in the form people actually experience it, and it does not show up in the headline inflation rate once rent stops accelerating.', low: 'Rent unusually cheap relative to pay.',
+        playHigh: 'Textbook: when housing costs outrun pay, discretionary spending gets crowded out with a lag, and the pressure shows up first at discount retailers and in credit card balances rather than in aggregate spending data. Note also that subsidies aimed at renters historically raised rents where supply was fixed, because the landlord captures them.', playLow: 'Textbook: cheap housing relative to wages freed up discretionary spending.' },
     WEALTHGDP: { high: 'The value of everything households own is at a near-record multiple of what the economy produces in a year. It was 3.5x in 1985. When claims grow faster than output, the gap is paid for by higher prices on the same assets rather than by more production, which is why owning assets has beaten earning wages.', low: 'Asset values low relative to the economy, which historically preceded strong long-run returns.',
         playHigh: 'Textbook: high starting valuations relative to the economy have historically meant weaker long-run returns and a bigger role for policy, since the wealth is concentrated and marked to prices that must keep rising to hold. It also means asset prices, not wages, drive spending.', playLow: 'Textbook: buying when claims are cheap relative to output was historically the better entry.' },
     M2V: { low: 'Each dollar is changing hands less often than almost ever. Read this carefully: the long decline is mostly an artifact of the Fed creating money faster than the economy grew, not proof that people are hoarding.', high: 'Money circulating fast, which historically accompanied inflationary booms.',
@@ -210,6 +213,26 @@ const pReal = (id) => built[id + '_R']?.p ?? null;
             built['BREADTH'] = {
                 id: 'BREADTH', label: 'Breadth: Equal÷Cap-weight S&P (idx)', unit: '', dec: 1, group: 'idx',
                 derived: true, pts, latest: pts[pts.length - 1][1], asOf: spx.asOf, stale: false,
+                d3: delta(pts, 3), d12: delta(pts, 12), p: pctile(pts), since: pts[0][0].slice(0, 4),
+            };
+        }
+    }
+}
+
+// ── rent measured in hours of work ──────────────────────────────────────────
+// Rent index divided by average hourly earnings, indexed to 100 at the start.
+// Rising = rent is taking more work to cover, whatever the headline CPI says.
+{
+    const rentObs = load('CUSR0000SEHA'), wageObs = load('CES0500000003');
+    if (rentObs && wageObs) {
+        const w = new Map(toMonthly(wageObs));
+        const raw = toMonthly(rentObs).map(([m, v]) => w.get(m) ? [m, v / w.get(m)] : null).filter(Boolean);
+        if (raw.length > 24) {
+            const base = raw[0][1];
+            const pts = raw.map(([m, v]) => [m, v / base * 100]);
+            built['RENTWAGE'] = {
+                id: 'RENTWAGE', label: 'Rent ÷ Hourly Wages (indexed)', unit: '', dec: 1, group: 'ineq',
+                derived: true, pts, latest: pts[pts.length - 1][1], asOf: pts[pts.length - 1][0], stale: false,
                 d3: delta(pts, 3), d12: delta(pts, 12), p: pctile(pts), since: pts[0][0].slice(0, 4),
             };
         }

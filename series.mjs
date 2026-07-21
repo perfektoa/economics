@@ -95,6 +95,9 @@ export const SERIES = [
     { id: 'A006RE1Q156NBEA', label: 'Investment Share of GDP',        unit: '%', kind: 'level', dec: 1, group: 'ineq', optional: true },
     { id: 'RHORUSQ156N',   label: 'Homeownership Rate',               unit: '%', kind: 'level', dec: 1, group: 'ineq', optional: true },
     { id: 'BABATOTALSAUS', label: 'New Business Applications',        unit: '',  kind: 'level', dec: 0, group: 'ineq', optional: true },
+    // Rent vs wages: the cost-of-living squeeze where it actually bites
+    { id: 'CUSR0000SEHA',  label: 'Rent (CPI)',                       unit: '',  kind: 'level', dec: 1, group: 'meta', optional: true },
+    { id: 'CES0500000003', label: 'Average Hourly Earnings',          unit: '$', kind: 'level', dec: 2, group: 'meta', optional: true },
     // Inputs for the housing affordability panel (nominal, so the ratio is fair)
     { id: 'MSPUS',         label: 'Median Home Sale Price',           unit: '$', kind: 'level', dec: 0, group: 'meta', optional: true },
     { id: 'MEHOINUSA646N', label: 'Median Household Income',          unit: '$', kind: 'level', dec: 0, group: 'meta', optional: true },
