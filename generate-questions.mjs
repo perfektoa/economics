@@ -26,6 +26,7 @@ function seriesObs(id) {
     return JSON.parse(readFileSync(f, 'utf8')).obs.map(o => ({ d: o.d, v: o.v * scale }));
 }
 const latestOf = (id) => { const o = seriesObs(id); return o?.length ? o[o.length - 1].v : null; };
+const lastObs = (id) => { const o = seriesObs(id); return o?.length ? o[o.length - 1].d : null; };
 function fmtV(id, v) {
     const s = meta(id);
     const t = v.toLocaleString('en-US', { minimumFractionDigits: s?.dec ?? 1, maximumFractionDigits: s?.dec ?? 1 });
@@ -114,16 +115,27 @@ for (const e of cal?.events || []) {
 const dow = new Date(today + 'T12:00').getUTCDay();
 const nextThu = plusDays(today, ((4 - dow + 7) % 7) || 7);
 const nextFri = plusDays(today, ((5 - dow + 7) % 7) || 7);
-const claimsNow = latestOf('ICSA');
-if (claimsNow != null) ask({
+const claimsNow = latestOf('ICSA'), claimsAt = lastObs('ICSA');
+if (claimsNow != null && claimsAt) ask({
     id: `q-icsa-${nextThu}`,
     question: `Jobless claims print HIGHER than ${Math.round(claimsNow)}k on the ${prettyDate(nextThu)} release`,
-    why: `Weekly rep. The print covers last week and lands Thursday morning.`,
-    askBy: plusDays(nextThu, -1), deadline: plusDays(nextThu, 3),
-    resolve: { series: 'ICSA', op: '>', value: +claimsNow.toFixed(1), mode: 'any', from: plusDays(today, -7) },
+    why: `Weekly rep. The print covers last week and lands Thursday morning. Baseline is the ${claimsAt} week at ${Math.round(claimsNow)}k.`,
+    // Deadline is the release day itself, so this resolves the morning after the
+    // print rather than three days later. Once the number is public, every extra
+    // day is a known answer being scored, which is free points for whoever looks.
+    askBy: plusDays(nextThu, -1), deadline: nextThu,
+    resolve: { series: 'ICSA', op: '>', value: +claimsNow.toFixed(1), mode: 'final', from: plusDays(claimsAt, 1) },
 });
 // Answer windows run until the day before the event so an evening check-in
 // never misses one — two weeklies expired unanswered under a 3-day window.
+//
+// The resolve window must START AFTER the observation used as the baseline.
+// Jobless claims get revised: the week ending Jul 11 was published at 208k,
+// the question was written against it, and it was later revised to 209k. With
+// the window starting before that date, a 1k revision to the OLD number
+// resolved the question YES while the release it actually asked about came in
+// at 187k. Single-print questions also use 'final', not 'any', so they judge
+// the new print rather than firing on anything in the window.
 const oilNow = latestOf('DCOILWTICO');
 if (oilNow != null) ask({
     id: `q-oil-${nextFri}`,

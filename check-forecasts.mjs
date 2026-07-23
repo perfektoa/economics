@@ -47,9 +47,17 @@ for (const f of db.forecasts) {
         }
     }
     if (outcome != null) {
-        // resolvedOn is the date of the observation that decided it — the
-        // retroactive close. Anything forecast after that day scores nothing.
-        f.outcome = outcome; f.resolvedOn = when; changed = true;
+        // The retroactive close must be the day the answer became KNOWABLE, not
+        // the period the data describes. FRED dates an observation by its
+        // reference week or month, but claims for the week ending Jul 18 are not
+        // published until Jul 23 — scoring to Jul 18 would void every forecast
+        // made in between, which were entirely legitimate. Detection date is the
+        // best available proxy for publication, since this runs hourly.
+        // resolvedRef keeps the observation that actually triggered it.
+        f.outcome = outcome;
+        f.resolvedRef = when;
+        f.resolvedOn = when > today ? when : today;
+        changed = true;
         const you = dailyBrier(f, 'user');
         const cl = dailyBrier(f, 'claude');
         const pct = (p) => Math.round(p * 100) + '%';
