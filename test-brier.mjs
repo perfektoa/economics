@@ -42,6 +42,22 @@ const f3 = { p: 0.9, created: '2026-07-01', answeredOn: '2026-07-01', deadline: 
 eq('brier', dailyBrier(f3).brier, 0.01);
 console.log('    early-right 0.010 beats late-fixed ' + r2.brier.toFixed(3));
 
+console.log('\nforecast changed ON the close day does not count (release-morning problem)');
+// 61% held from Jul 21, switched to 1% on Jul 23 — the day the print published.
+// Only the 61% counts, carried through the close.
+const fClose = { p: 0.01, created: '2026-07-21', answeredOn: '2026-07-23',
+    pHistory: [{ p: 0.61, on: '2026-07-21' }], deadline: '2026-07-23', outcome: 0, resolvedOn: '2026-07-23' };
+const rClose = dailyBrier(fClose);
+eq('close-day entry excluded, 61% carries', rClose.brier, 0.61 ** 2);
+eq('scored the 3 days held', rClose.days, 3);
+eq('last counted forecast is the pre-close one', rClose.last, 0.61);
+eq('no updates counted', rClose.updates, 0);
+// and an update the day BEFORE the close still counts
+const fPrior = { ...fClose, answeredOn: '2026-07-22' };
+const rPrior = dailyBrier(fPrior);
+eq('day-before update DOES count', rPrior.updates, 1);
+eq('brier reflects the update', rPrior.brier, (0.61 ** 2 + 0.01 ** 2 * 2) / 3);
+
 console.log('\nforecast entered AFTER resolution scores nothing');
 const f4 = { p: 0.99, created: '2026-07-01', answeredOn: '2026-07-15', deadline: '2026-07-20', outcome: 1, resolvedOn: '2026-07-11' };
 eq('null (retroactive close)', dailyBrier(f4), null);

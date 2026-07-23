@@ -56,7 +56,12 @@ for (const f of db.forecasts) {
         // resolvedRef keeps the observation that actually triggered it.
         f.outcome = outcome;
         f.resolvedRef = when;
-        f.resolvedOn = when > today ? when : today;
+        // The close is the day the answer became knowable. For a 'final'
+        // question the deadline IS the scheduled release day, so use it rather
+        // than the day this happened to run — otherwise the close drifts a day
+        // late and a forecast entered on release morning slips back inside it.
+        // For 'any' questions the crossing print publishes about when we see it.
+        f.resolvedOn = (f.resolve.mode || 'any') === 'final' ? f.deadline : (when > today ? when : today);
         changed = true;
         const you = dailyBrier(f, 'user');
         const cl = dailyBrier(f, 'claude');

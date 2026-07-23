@@ -31,12 +31,20 @@ export function timeline(f, who = 'user') {
 }
 
 // Daily-averaged Brier for a resolved forecast. Returns null when unresolved
-// or when the forecast was entered after the question already resolved.
+// or when nothing was forecast before the close.
+//
+// Only forecasts entered STRICTLY BEFORE the close count — the Good Judgment
+// rule is "through the end of the calendar day prior to the official closing".
+// This matters because a release lands in the morning: without the cutoff, a
+// number changed hours after the print reads as a legitimate same-day update,
+// and there is no way to prove otherwise. Excluding close-day entries removes
+// the question entirely. The last number held going INTO the release is the
+// one that gets scored, carried forward through the close.
 export function dailyBrier(f, who = 'user') {
     if (f.outcome == null) return null;
-    const tl = timeline(f, who);
-    if (!tl.length) return null;
     const end = toDay(f.resolvedOn || f.deadline);
+    const tl = timeline(f, who).filter(e => e.on < end);
+    if (!tl.length) return null;
     const start = tl[0].on;
     if (daysBetween(start, end) < 0) return null;
     let sum = 0, n = 0, i = 0, active = null;
@@ -72,7 +80,8 @@ export function averageBrier(list, who = 'user') {
 // Directional hit rate uses the FIRST forecast — the honest test of the call,
 // before any updating.
 export function hitRate(list, who = 'user') {
-    const rows = list.map(f => ({ f, tl: timeline(f, who) })).filter(x => x.tl.length && x.f.outcome != null);
+    const rows = list.map(f => ({ f, tl: timeline(f, who).filter(e => e.on < toDay(f.resolvedOn || f.deadline)) }))
+        .filter(x => x.tl.length && x.f.outcome != null);
     if (!rows.length) return null;
     const hits = rows.filter(({ f, tl }) => (tl[0].p >= 0.5) === (f.outcome === 1)).length;
     return { hits, n: rows.length, pct: Math.round(100 * hits / rows.length) };
