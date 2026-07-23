@@ -3,6 +3,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { SERIES } from './series.mjs';
 import { dailyBrier } from './brier.mjs';
+import { evaluateForecast, closeDateFor } from './resolve.mjs';
 
 const FILE = new URL('./forecasts.json', import.meta.url);
 if (!existsSync(FILE)) { console.log('no forecasts.json yet'); process.exit(0); }
@@ -32,20 +33,8 @@ for (const f of db.forecasts) {
     if (!obs) continue;
     // resolve.from overrides created for series whose obs are dated by reference
     // period (e.g. UNRATE prints dated the 1st of the prior month).
-    const from = f.resolve.from || f.created;
-    const inWindow = obs.filter(o => o.d >= from && o.d <= f.deadline);
-    let outcome = null, when = null;
-    if ((f.resolve.mode || 'any') === 'any') {
-        const hit = inWindow.find(o => test(f.resolve.op, o.v, f.resolve.value));
-        if (hit) { outcome = 1; when = hit.d; }
-        else if (today > f.deadline) { outcome = 0; when = f.deadline; }
-    } else { // final: judge last observation at/before deadline
-        if (today > f.deadline && inWindow.length) {
-            const last = inWindow[inWindow.length - 1];
-            outcome = test(f.resolve.op, last.v, f.resolve.value) ? 1 : 0;
-            when = last.d;
-        }
-    }
+    const ev = evaluateForecast(f, obs, today);
+    const outcome = ev?.outcome ?? null, when = ev?.when ?? null;
     if (outcome != null) {
         // The retroactive close must be the day the answer became KNOWABLE, not
         // the period the data describes. FRED dates an observation by its
@@ -56,12 +45,7 @@ for (const f of db.forecasts) {
         // resolvedRef keeps the observation that actually triggered it.
         f.outcome = outcome;
         f.resolvedRef = when;
-        // The close is the day the answer became knowable. For a 'final'
-        // question the deadline IS the scheduled release day, so use it rather
-        // than the day this happened to run — otherwise the close drifts a day
-        // late and a forecast entered on release morning slips back inside it.
-        // For 'any' questions the crossing print publishes about when we see it.
-        f.resolvedOn = (f.resolve.mode || 'any') === 'final' ? f.deadline : (when > today ? when : today);
+        f.resolvedOn = closeDateFor(f, when, today);
         changed = true;
         const you = dailyBrier(f, 'user');
         const cl = dailyBrier(f, 'claude');

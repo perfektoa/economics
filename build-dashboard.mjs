@@ -6,6 +6,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { SERIES } from './series.mjs';
 import { dailyBrier, averageBrier, hitRate, heldStats, timeline } from './brier.mjs';
+import { evaluateForecast, closeDateFor } from './resolve.mjs';
 
 const DATA_DIR = new URL('./data/', import.meta.url);
 const load = (id) => {
@@ -837,6 +838,21 @@ The board writes its own questions — they appear before FOMC decisions and job
         return s ? ` · now: ${s.latest.toFixed(s.dec)}${s.unit} vs ${f.resolve.op} ${f.resolve.value}` : '';
     };
     const daysLeft = (d) => Math.max(0, Math.round((Date.parse(d) - Date.now()) / 86400e3));
+    // A forecast whose deciding print has landed but which the resolver has not
+    // formally closed yet. The score is already fixed, so show it now rather
+    // than making you wait a day to see how you did.
+    const todayISO2 = new Date().toISOString().slice(0, 10);
+    const pendingOf = (f) => {
+        if (!f.resolve) return null;
+        const raw = load(f.resolve.series);
+        if (!raw) return null;
+        const scale = SERIES.find(s => s.id === f.resolve.series)?.scale || 1;
+        const obs = raw.map(o => ({ d: o.d, v: o.v * scale }));
+        const ev = evaluateForecast(f, obs, todayISO2, { provisional: true });
+        if (!ev) return null;
+        const sim = { ...f, outcome: ev.outcome, resolvedRef: ev.when, resolvedOn: closeDateFor(f, ev.when, todayISO2) };
+        return { ...ev, you: dailyBrier(sim, 'user'), claude: dailyBrier(sim, 'claude') };
+    };
     return `<h2>Forecast Journal <span style="color:var(--muted);text-transform:none;letter-spacing:0;">— the board asks, you answer, the machine scores every day you hold a number. Brier: 0 = prophet, 0.25 = coin flips at 50%.</span></h2>
 <div id="fc-filehint" style="background:var(--panel);border:1px solid var(--warn);border-radius:6px;padding:8px 12px;margin-bottom:8px;color:var(--warn);">
 You've opened the dashboard as a plain file, so the answer buttons are hidden.
@@ -870,9 +886,17 @@ ${open.map(f => {
     const held = heldStats(f, 'user');
     const tl = timeline(f, 'user');
     const histTip = tl.length > 1 ? tl.map(e => `${e.on}: ${Math.round(e.p * 100)}%`).join('\n') : '';
-    return `<div style="padding:5px 12px;border-bottom:1px solid var(--line);">
+    const pend = pendingOf(f);
+    return `<div style="padding:5px 12px;border-bottom:1px solid var(--line);${pend ? 'background:rgba(232,178,60,0.06);' : ''}">
     <span style="color:var(--accent);font-weight:700;">${Math.round(f.p * 100)}%</span>${f.claudeP != null ? `<span style="color:var(--muted);font-size:11px;${f.claudeWhy ? 'cursor:help;border-bottom:1px dotted var(--muted);' : ''}"${f.claudeWhy ? ` title="${escA(f.claudeWhy)}"` : ''}> vs Claude ${Math.round(f.claudeP * 100)}%</span>` : ''}
     <span style="color:var(--ink);"> ${esc(f.question)}</span>
+    ${pend ? `<div style="margin-top:3px;">
+        <span style="color:${pend.outcome ? 'var(--good)' : 'var(--bad)'};font-weight:700;">ANSWER IS IN: ${pend.outcome ? 'YES' : 'NO'}</span>
+        <span style="color:var(--muted);">${pend.deciding != null ? ` (${pend.deciding.toFixed(1)} on ${pend.when})` : ''} —
+        you ${pend.you ? 'scored ' + pend.you.brier.toFixed(3) : 'unscored'}${pend.claude ? `, Claude ${pend.claude.brier.toFixed(3)}` : ''}.
+        ${pend.you && pend.claude ? (pend.you.brier < pend.claude.brier ? 'You win this one.' : pend.you.brier > pend.claude.brier ? 'Claude wins this one.' : 'Dead heat.') : ''}
+        Confirms on the next refresh; the score is already fixed.</span>
+    </div>` : ''}
     <span style="color:var(--muted);"> — by ${f.deadline} (${daysLeft(f.deadline)}d left)${esc(liveVal(f))}${f.resolve ? '' : ' · manual'}</span>
     ${held ? `<span style="color:var(--muted);font-size:11px;${histTip ? 'cursor:help;border-bottom:1px dotted var(--muted);' : ''}"${histTip ? ` title="${escA(histTip)}"` : ''}> · held ${held.days}d${held.updates ? `, revised ${held.updates}x` : ''}</span>` : ''}
     <span class="fc-ctl" data-id="${f.id}" data-manual="${f.resolve ? 0 : 1}" style="float:right;display:none;gap:6px;"></span>
