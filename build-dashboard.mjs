@@ -867,7 +867,7 @@ You've opened the dashboard as a plain file, so the answer buttons are hidden.
 <div style="background:var(--panel);border:1px solid var(--line);border-radius:6px;">
 <div style="display:flex;gap:18px;padding:6px 12px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums;align-items:center;">
     ${questions.length ? `<span style="color:var(--accent);font-weight:700;">Awaiting your answer: ${questions.length}</span>` : ''}
-    <span>Scored: <b style="color:var(--accent);">${settled.length}</b>${nPending ? `<span style="color:var(--muted);" title="${nPending} of these has its answer already but is confirmed on the next refresh. The score is fixed either way.">*</span>` : ''}</span>
+    <span>Resolved: <b style="color:var(--accent);">${settled.length}</b></span>
     <span title="${you ? `Averaged over ${you.days} scored days. Scoring only your final answer would give ${you.finalOnly.toFixed(3)}.` : 'No resolved forecasts yet.'}">You: <b style="color:${brierColor(brier)};">${brier != null ? 'Brier ' + brier.toFixed(3) : '—'}</b>${youHit ? ` <span style="color:var(--muted);">(hit ${youHit.pct}%)</span>` : ''}</span>
     ${cdone.length || open.some(f => f.claudeP != null) || questions.some(f => f.claudeP != null) ? `<span title="${cl ? `Averaged over ${cl.days} scored days.` : 'No resolved forecasts yet.'}">Claude: <b style="color:${brierColor(cBrier)};">${cBrier != null ? 'Brier ' + cBrier.toFixed(3) : '—'}</b>${clHit ? ` <span style="color:var(--muted);">(hit ${clHit.pct}%)</span>` : ''}</span>` : ''}
     <span style="color:var(--muted);">Open: ${open.length - nPending}</span>
@@ -900,8 +900,7 @@ ${open.map(f => {
     ${pend ? `<div style="margin-top:3px;">
         <span style="color:${pend.outcome ? 'var(--good)' : 'var(--bad)'};font-weight:700;">ANSWER IS IN: ${pend.outcome ? 'YES' : 'NO'}</span>
         <span style="color:var(--muted);">${pend.deciding != null ? ` (${pend.deciding.toFixed(1)} on ${pend.when})` : ''} —
-        Brier you <b style="color:${pend.you ? brierColor(pend.you.brier) : 'var(--muted)'};">${pend.you ? pend.you.brier.toFixed(3) : '—'}</b>${pend.claude ? ` · Claude <b style="color:${brierColor(pend.claude.brier)};">${pend.claude.brier.toFixed(3)}</b>` : ''}.
-        Confirms on the next refresh; the score is already fixed.</span>
+        Brier you <b style="color:${pend.you ? brierColor(pend.you.brier) : 'var(--muted)'};">${pend.you ? pend.you.brier.toFixed(3) : '—'}</b>${pend.claude ? ` · Claude <b style="color:${brierColor(pend.claude.brier)};">${pend.claude.brier.toFixed(3)}</b>` : ''}</span>
     </div>` : ''}
     <span style="color:var(--muted);"> — by ${f.deadline} (${daysLeft(f.deadline)}d left)${esc(liveVal(f))}${f.resolve ? '' : ' · manual'}</span>
     ${held ? `<span style="color:var(--muted);font-size:11px;${histTip ? 'cursor:help;border-bottom:1px dotted var(--muted);' : ''}"${histTip ? ` title="${escA(histTip)}"` : ''}> · held ${held.days}d${held.updates ? `, revised ${held.updates}x` : ''}</span>` : ''}
