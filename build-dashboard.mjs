@@ -822,12 +822,30 @@ The board writes its own questions — they appear before FOMC decisions and job
     const questions = db.forecasts.filter(f => f.outcome == null && f.p == null);
     const open = db.forecasts.filter(f => f.outcome == null && f.p != null);
     const done = db.forecasts.filter(f => f.outcome != null);
+    // A forecast whose deciding print has landed but which the resolver has not
+    // formally closed yet. Its score is already fixed, so it counts on the
+    // scoreboard immediately rather than showing a dash for another day.
+    const todayISO2 = new Date().toISOString().slice(0, 10);
+    const settleOf = (f) => {
+        if (!f.resolve) return null;
+        const raw = load(f.resolve.series);
+        if (!raw) return null;
+        const scale = SERIES.find(s => s.id === f.resolve.series)?.scale || 1;
+        const ev = evaluateForecast(f, raw.map(o => ({ d: o.d, v: o.v * scale })), todayISO2, { provisional: true });
+        if (!ev) return null;
+        return { ...ev, sim: { ...f, outcome: ev.outcome, resolvedRef: ev.when, resolvedOn: closeDateFor(f, ev.when, todayISO2) } };
+    };
+    const pendingMap = new Map();
+    for (const f of open) { const s = settleOf(f); if (s) pendingMap.set(f.id, s); }
+    const settled = [...done, ...[...pendingMap.values()].map(s => s.sim)];
+    const nPending = pendingMap.size;
+
     // Daily-averaged Brier (Good Judgment Project convention): scored on every
     // day a number was held, then averaged. Being right early is what wins.
-    const you = averageBrier(done, 'user');
-    const youHit = hitRate(done, 'user');
+    const you = averageBrier(settled, 'user');
+    const youHit = hitRate(settled, 'user');
     const brier = you?.brier ?? null;
-    const cdone = done.filter(f => f.claudeP != null);
+    const cdone = settled.filter(f => f.claudeP != null);
     const cl = averageBrier(cdone, 'claude');
     const clHit = hitRate(cdone, 'claude');
     const cBrier = cl?.brier ?? null;
@@ -838,20 +856,9 @@ The board writes its own questions — they appear before FOMC decisions and job
         return s ? ` · now: ${s.latest.toFixed(s.dec)}${s.unit} vs ${f.resolve.op} ${f.resolve.value}` : '';
     };
     const daysLeft = (d) => Math.max(0, Math.round((Date.parse(d) - Date.now()) / 86400e3));
-    // A forecast whose deciding print has landed but which the resolver has not
-    // formally closed yet. The score is already fixed, so show it now rather
-    // than making you wait a day to see how you did.
-    const todayISO2 = new Date().toISOString().slice(0, 10);
     const pendingOf = (f) => {
-        if (!f.resolve) return null;
-        const raw = load(f.resolve.series);
-        if (!raw) return null;
-        const scale = SERIES.find(s => s.id === f.resolve.series)?.scale || 1;
-        const obs = raw.map(o => ({ d: o.d, v: o.v * scale }));
-        const ev = evaluateForecast(f, obs, todayISO2, { provisional: true });
-        if (!ev) return null;
-        const sim = { ...f, outcome: ev.outcome, resolvedRef: ev.when, resolvedOn: closeDateFor(f, ev.when, todayISO2) };
-        return { ...ev, you: dailyBrier(sim, 'user'), claude: dailyBrier(sim, 'claude') };
+        const s = pendingMap.get(f.id);
+        return s ? { ...s, you: dailyBrier(s.sim, 'user'), claude: dailyBrier(s.sim, 'claude') } : null;
     };
     return `<h2>Forecast Journal <span style="color:var(--muted);text-transform:none;letter-spacing:0;">— the board asks, you answer, the machine scores every day you hold a number. Brier: 0 = prophet, 0.25 = coin flips at 50%.</span></h2>
 <div id="fc-filehint" style="background:var(--panel);border:1px solid var(--warn);border-radius:6px;padding:8px 12px;margin-bottom:8px;color:var(--warn);">
@@ -860,10 +867,10 @@ You've opened the dashboard as a plain file, so the answer buttons are hidden.
 <div style="background:var(--panel);border:1px solid var(--line);border-radius:6px;">
 <div style="display:flex;gap:18px;padding:6px 12px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums;align-items:center;">
     ${questions.length ? `<span style="color:var(--accent);font-weight:700;">Awaiting your answer: ${questions.length}</span>` : ''}
-    <span>Resolved: <b style="color:var(--accent);">${done.length}</b></span>
+    <span>Scored: <b style="color:var(--accent);">${settled.length}</b>${nPending ? `<span style="color:var(--muted);" title="${nPending} of these has its answer already but is confirmed on the next refresh. The score is fixed either way.">*</span>` : ''}</span>
     <span title="${you ? `Averaged over ${you.days} scored days. Scoring only your final answer would give ${you.finalOnly.toFixed(3)}.` : 'No resolved forecasts yet.'}">You: <b style="color:${brierColor(brier)};">${brier != null ? 'Brier ' + brier.toFixed(3) : '—'}</b>${youHit ? ` <span style="color:var(--muted);">(hit ${youHit.pct}%)</span>` : ''}</span>
     ${cdone.length || open.some(f => f.claudeP != null) || questions.some(f => f.claudeP != null) ? `<span title="${cl ? `Averaged over ${cl.days} scored days.` : 'No resolved forecasts yet.'}">Claude: <b style="color:${brierColor(cBrier)};">${cBrier != null ? 'Brier ' + cBrier.toFixed(3) : '—'}</b>${clHit ? ` <span style="color:var(--muted);">(hit ${clHit.pct}%)</span>` : ''}</span>` : ''}
-    <span style="color:var(--muted);">Open: ${open.length}</span>
+    <span style="color:var(--muted);">Open: ${open.length - nPending}</span>
     <span style="color:var(--muted);font-size:11px;" title="Good Judgment Project convention: your number is scored on every day you held it, then averaged, and it carries forward until you change it. So a call you got right early scores well on every one of those days, while a correction made two days before the deadline only improves two days. Late updates are allowed — they are just nearly worthless, which is why nothing needs locking. Superforecasters average 0.166; regular forecasters 0.259.">daily-averaged ⓘ</span>
     <a id="fc-toggle" href="#" style="display:none;color:var(--muted);margin-left:auto;font-size:11px;">+ custom call</a>
 </div>
