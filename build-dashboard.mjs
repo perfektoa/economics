@@ -893,8 +893,7 @@ ${open.map(f => {
     ${pend ? `<div style="margin-top:3px;">
         <span style="color:${pend.outcome ? 'var(--good)' : 'var(--bad)'};font-weight:700;">ANSWER IS IN: ${pend.outcome ? 'YES' : 'NO'}</span>
         <span style="color:var(--muted);">${pend.deciding != null ? ` (${pend.deciding.toFixed(1)} on ${pend.when})` : ''} —
-        you ${pend.you ? 'scored ' + pend.you.brier.toFixed(3) : 'unscored'}${pend.claude ? `, Claude ${pend.claude.brier.toFixed(3)}` : ''}.
-        ${pend.you && pend.claude ? (pend.you.brier < pend.claude.brier ? 'You win this one.' : pend.you.brier > pend.claude.brier ? 'Claude wins this one.' : 'Dead heat.') : ''}
+        Brier you <b style="color:${pend.you ? brierColor(pend.you.brier) : 'var(--muted)'};">${pend.you ? pend.you.brier.toFixed(3) : '—'}</b>${pend.claude ? ` · Claude <b style="color:${brierColor(pend.claude.brier)};">${pend.claude.brier.toFixed(3)}</b>` : ''}.
         Confirms on the next refresh; the score is already fixed.</span>
     </div>` : ''}
     <span style="color:var(--muted);"> — by ${f.deadline} (${daysLeft(f.deadline)}d left)${esc(liveVal(f))}${f.resolve ? '' : ' · manual'}</span>
