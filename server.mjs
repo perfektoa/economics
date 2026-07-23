@@ -55,10 +55,12 @@ createServer(async (req, res) => {
             if (!f) return send(404, { error: 'no such id' });
             if (f.outcome != null) return send(400, { error: 'already resolved' });
             const today = new Date().toISOString().slice(0, 10);
-            // Edits allowed until the answer window closes (askBy, else deadline).
-            if (f.p != null && today > (f.askBy || f.deadline)) return send(400, { error: 'answer window closed — pick is locked' });
+            // Updates stay open until the deadline. No lock is needed: scoring is
+            // daily-averaged, so a late change only affects the days that remain,
+            // and anything entered after the question resolves scores nothing.
+            if (today > f.deadline) return send(400, { error: 'deadline passed' });
             if (!(+b.p >= 1 && +b.p <= 99)) return send(400, { error: 'probability must be 1-99' });
-            if (f.p != null) f.pHistory = [...(f.pHistory || []), { p: f.p, on: f.answeredOn }];
+            if (f.p != null) f.pHistory = [...(f.pHistory || []), { p: f.p, on: f.answeredOn || f.created }];
             f.p = (+b.p) / 100;
             f.answeredOn = today;
             saveDb(db); rebuild();

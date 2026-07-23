@@ -5,6 +5,7 @@
 // It does not recommend trades and is not investment advice.
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { SERIES } from './series.mjs';
+import { dailyBrier, averageBrier, hitRate, heldStats, timeline } from './brier.mjs';
 
 const DATA_DIR = new URL('./data/', import.meta.url);
 const load = (id) => {
@@ -820,12 +821,15 @@ The board writes its own questions — they appear before FOMC decisions and job
     const questions = db.forecasts.filter(f => f.outcome == null && f.p == null);
     const open = db.forecasts.filter(f => f.outcome == null && f.p != null);
     const done = db.forecasts.filter(f => f.outcome != null);
-    const brier = done.length ? done.reduce((s, f) => s + (f.p - f.outcome) ** 2, 0) / done.length : null;
-    const hit = done.length ? done.filter(f => (f.p >= 0.5) === (f.outcome === 1)).length : 0;
-    // Claude answers the same questions (claudeP) — head-to-head scoreboard.
+    // Daily-averaged Brier (Good Judgment Project convention): scored on every
+    // day a number was held, then averaged. Being right early is what wins.
+    const you = averageBrier(done, 'user');
+    const youHit = hitRate(done, 'user');
+    const brier = you?.brier ?? null;
     const cdone = done.filter(f => f.claudeP != null);
-    const cBrier = cdone.length ? cdone.reduce((s, f) => s + (f.claudeP - f.outcome) ** 2, 0) / cdone.length : null;
-    const cHit = cdone.length ? cdone.filter(f => (f.claudeP >= 0.5) === (f.outcome === 1)).length : 0;
+    const cl = averageBrier(cdone, 'claude');
+    const clHit = hitRate(cdone, 'claude');
+    const cBrier = cl?.brier ?? null;
     const brierColor = (b) => b == null ? 'var(--muted)' : b < 0.2 ? 'var(--good)' : b < 0.28 ? 'var(--warn)' : 'var(--bad)';
     const liveVal = (f) => {
         if (!f.resolve) return '';
@@ -833,7 +837,7 @@ The board writes its own questions — they appear before FOMC decisions and job
         return s ? ` · now: ${s.latest.toFixed(s.dec)}${s.unit} vs ${f.resolve.op} ${f.resolve.value}` : '';
     };
     const daysLeft = (d) => Math.max(0, Math.round((Date.parse(d) - Date.now()) / 86400e3));
-    return `<h2>Forecast Journal <span style="color:var(--muted);text-transform:none;letter-spacing:0;">— the board asks, you answer, the machine scores. Brier: 0 = prophet, 0.25 = coin flips at 50%.</span></h2>
+    return `<h2>Forecast Journal <span style="color:var(--muted);text-transform:none;letter-spacing:0;">— the board asks, you answer, the machine scores every day you hold a number. Brier: 0 = prophet, 0.25 = coin flips at 50%.</span></h2>
 <div id="fc-filehint" style="background:var(--panel);border:1px solid var(--warn);border-radius:6px;padding:8px 12px;margin-bottom:8px;color:var(--warn);">
 You've opened the dashboard as a plain file, so the answer buttons are hidden.
 <a href="http://localhost:8787/" style="color:var(--accent);font-weight:700;">Click here to open it properly</a> — same page, but your picks can be saved.</div>
@@ -841,9 +845,10 @@ You've opened the dashboard as a plain file, so the answer buttons are hidden.
 <div style="display:flex;gap:18px;padding:6px 12px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums;align-items:center;">
     ${questions.length ? `<span style="color:var(--accent);font-weight:700;">Awaiting your answer: ${questions.length}</span>` : ''}
     <span>Resolved: <b style="color:var(--accent);">${done.length}</b></span>
-    <span>You: <b style="color:${brierColor(brier)};">${brier != null ? 'Brier ' + brier.toFixed(3) : '—'}</b>${done.length ? ` <span style="color:var(--muted);">(hit ${Math.round(hit / done.length * 100)}%)</span>` : ''}</span>
-    ${cdone.length || open.some(f => f.claudeP != null) || questions.some(f => f.claudeP != null) ? `<span>Claude: <b style="color:${brierColor(cBrier)};">${cBrier != null ? 'Brier ' + cBrier.toFixed(3) : '—'}</b>${cdone.length ? ` <span style="color:var(--muted);">(hit ${Math.round(cHit / cdone.length * 100)}%)</span>` : ''}</span>` : ''}
+    <span title="${you ? `Averaged over ${you.days} scored days. Scoring only your final answer would give ${you.finalOnly.toFixed(3)}.` : 'No resolved forecasts yet.'}">You: <b style="color:${brierColor(brier)};">${brier != null ? 'Brier ' + brier.toFixed(3) : '—'}</b>${youHit ? ` <span style="color:var(--muted);">(hit ${youHit.pct}%)</span>` : ''}</span>
+    ${cdone.length || open.some(f => f.claudeP != null) || questions.some(f => f.claudeP != null) ? `<span title="${cl ? `Averaged over ${cl.days} scored days.` : 'No resolved forecasts yet.'}">Claude: <b style="color:${brierColor(cBrier)};">${cBrier != null ? 'Brier ' + cBrier.toFixed(3) : '—'}</b>${clHit ? ` <span style="color:var(--muted);">(hit ${clHit.pct}%)</span>` : ''}</span>` : ''}
     <span style="color:var(--muted);">Open: ${open.length}</span>
+    <span style="color:var(--muted);font-size:11px;" title="Good Judgment Project convention: your number is scored on every day you held it, then averaged, and it carries forward until you change it. So a call you got right early scores well on every one of those days, while a correction made two days before the deadline only improves two days. Late updates are allowed — they are just nearly worthless, which is why nothing needs locking. Superforecasters average 0.166; regular forecasters 0.259.">daily-averaged ⓘ</span>
     <a id="fc-toggle" href="#" style="display:none;color:var(--muted);margin-left:auto;font-size:11px;">+ custom call</a>
 </div>
 ${questions.map(f => `<div style="padding:8px 12px;border-bottom:1px solid var(--line);background:rgba(232,178,60,0.05);">
@@ -861,11 +866,15 @@ ${questions.map(f => `<div style="padding:8px 12px;border-bottom:1px solid var(-
 </div>`).join('')}
 ${open.map(f => {
     const todayISO = new Date().toISOString().slice(0, 10);
-    const editable = (f.askBy || f.deadline) >= todayISO;
+    const editable = f.deadline >= todayISO;      // updates stay open; daily averaging makes late ones nearly worthless
+    const held = heldStats(f, 'user');
+    const tl = timeline(f, 'user');
+    const histTip = tl.length > 1 ? tl.map(e => `${e.on}: ${Math.round(e.p * 100)}%`).join('\n') : '';
     return `<div style="padding:5px 12px;border-bottom:1px solid var(--line);">
     <span style="color:var(--accent);font-weight:700;">${Math.round(f.p * 100)}%</span>${f.claudeP != null ? `<span style="color:var(--muted);font-size:11px;${f.claudeWhy ? 'cursor:help;border-bottom:1px dotted var(--muted);' : ''}"${f.claudeWhy ? ` title="${escA(f.claudeWhy)}"` : ''}> vs Claude ${Math.round(f.claudeP * 100)}%</span>` : ''}
     <span style="color:var(--ink);"> ${esc(f.question)}</span>
     <span style="color:var(--muted);"> — by ${f.deadline} (${daysLeft(f.deadline)}d left)${esc(liveVal(f))}${f.resolve ? '' : ' · manual'}</span>
+    ${held ? `<span style="color:var(--muted);font-size:11px;${histTip ? 'cursor:help;border-bottom:1px dotted var(--muted);' : ''}"${histTip ? ` title="${escA(histTip)}"` : ''}> · held ${held.days}d${held.updates ? `, revised ${held.updates}x` : ''}</span>` : ''}
     <span class="fc-ctl" data-id="${f.id}" data-manual="${f.resolve ? 0 : 1}" style="float:right;display:none;gap:6px;"></span>
     ${editable ? `<div class="fc-edit" data-id="${f.id}" style="display:none;align-items:center;gap:10px;margin-top:6px;">
         <span style="color:var(--bad);font-size:11px;">NO</span>
@@ -874,7 +883,7 @@ ${open.map(f => {
         <b class="fc-qp" style="color:var(--accent);min-width:40px;font-variant-numeric:tabular-nums;">${Math.round(f.p * 100)}%</b>
         <button class="fc-save" style="background:none;border:1px solid var(--accent);color:var(--accent);border-radius:4px;padding:2px 12px;font:inherit;font-size:12px;cursor:pointer;">Save</button>
         <button class="fc-cancel" style="background:none;border:1px solid var(--line);color:var(--muted);border-radius:4px;padding:2px 10px;font:inherit;font-size:12px;cursor:pointer;">Cancel</button>
-        <span style="color:var(--muted);font-size:11px;">editable until ${f.askBy || f.deadline}</span>
+        <span style="color:var(--muted);font-size:11px;">update any time — only the days ahead are affected</span>
     </div>` : ''}
 </div>`; }).join('')}
 <div id="fc-form" style="display:none;padding:8px 12px;border-bottom:1px solid var(--line);flex-wrap:wrap;gap:6px;align-items:center;">
@@ -890,12 +899,19 @@ ${open.map(f => {
     <select id="fm" style="background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:4px;font:inherit;"><option value="any">any print</option><option value="final">at deadline</option></select>
     <button id="fadd" style="background:var(--panel2,#232013);color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:4px 12px;font:inherit;cursor:pointer;">Log it</button>
 </div>
-${done.slice(-8).reverse().map(f => `<div style="padding:5px 12px;border-bottom:1px solid var(--line);">
+${done.slice(-8).reverse().map(f => {
+    const yb = dailyBrier(f, 'user'), cb = dailyBrier(f, 'claude');
+    const pc = (p) => Math.round(p * 100) + '%';
+    const path = yb ? (yb.updates ? `${pc(yb.first)} → ${pc(yb.last)}` : pc(yb.first)) : '—';
+    const revTip = yb && yb.updates
+        ? `You revised ${yb.updates}x. Holding your first ${pc(yb.first)} for the whole window would have scored ${yb.firstOnly.toFixed(3)}; scoring only your final answer would give ${yb.finalOnly.toFixed(3)}.`
+        : yb ? `Held ${pc(yb.first)} for all ${yb.days} scored days.` : '';
+    return `<div style="padding:5px 12px;border-bottom:1px solid var(--line);">
     <span style="color:${f.outcome ? 'var(--good)' : 'var(--bad)'};font-weight:700;">${f.outcome ? 'YES' : 'NO'}</span>
-    <span style="color:var(--muted);"${f.claudeWhy ? ` title="${escA(f.claudeWhy)}"` : ''}> (you ${Math.round(f.p * 100)}%${f.claudeP != null ? ` · Claude ${Math.round(f.claudeP * 100)}%` : ''})</span>
+    <span style="color:var(--muted);cursor:help;" title="${escA(revTip)}"> (you ${path}${cb ? ` · Claude ${pc(cb.first)}` : ''})</span>
     <span style="color:var(--ink);"> ${esc(f.question)}</span>
-    <span style="color:var(--muted);"> — Brier you ${((f.p - f.outcome) ** 2).toFixed(3)}${f.claudeP != null ? ` · Claude ${((f.claudeP - f.outcome) ** 2).toFixed(3)}` : ''}, resolved ${f.resolvedOn}</span>
-</div>`).join('')}
+    <span style="color:var(--muted);"> — Brier you ${yb ? yb.brier.toFixed(3) : '—'}${cb ? ` · Claude ${cb.brier.toFixed(3)}` : ''} over ${yb ? yb.days : '?'} days, resolved ${f.resolvedOn}</span>
+</div>`; }).join('')}
 </div>`;
 })()}
 <h2>US Economy</h2><div class="cells">${cells('us')}</div>

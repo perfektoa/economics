@@ -2,6 +2,7 @@
 // ntfy when one resolves. Runs in the hourly chain before build-dashboard.
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { SERIES } from './series.mjs';
+import { dailyBrier } from './brier.mjs';
 
 const FILE = new URL('./forecasts.json', import.meta.url);
 if (!existsSync(FILE)) { console.log('no forecasts.json yet'); process.exit(0); }
@@ -46,14 +47,22 @@ for (const f of db.forecasts) {
         }
     }
     if (outcome != null) {
+        // resolvedOn is the date of the observation that decided it — the
+        // retroactive close. Anything forecast after that day scores nothing.
         f.outcome = outcome; f.resolvedOn = when; changed = true;
-        const brier = ((f.p - outcome) ** 2).toFixed(3);
-        console.log(`resolved ${f.id}: ${outcome ? 'YES' : 'NO'} — "${f.question}" (you said ${Math.round(f.p * 100)}%, Brier ${brier})`);
-        const cLine = f.claudeP != null
-            ? ` Claude said ${Math.round(f.claudeP * 100)}% (Brier ${((f.claudeP - outcome) ** 2).toFixed(3)}).`
+        const you = dailyBrier(f, 'user');
+        const cl = dailyBrier(f, 'claude');
+        const pct = (p) => Math.round(p * 100) + '%';
+        const yourLine = you
+            ? `${pct(you.first)}${you.updates ? ` → ${pct(you.last)}` : ''}, Brier ${you.brier.toFixed(3)} over ${you.days} day${you.days === 1 ? '' : 's'}`
+            : 'unscored';
+        console.log(`resolved ${f.id}: ${outcome ? 'YES' : 'NO'} — "${f.question}" (you ${yourLine})`);
+        const cLine = cl ? ` Claude ${pct(cl.first)}, Brier ${cl.brier.toFixed(3)}.` : '';
+        const revised = you && you.updates
+            ? ` You revised ${you.updates}x: holding your first ${pct(you.first)} throughout would have scored ${you.firstOnly.toFixed(3)}.`
             : '';
         await notify(`Forecast resolved ${outcome ? 'YES' : 'NO'}: ${f.question}`,
-            `You said ${Math.round(f.p * 100)}%, Brier ${brier} (0 = perfect, 0.25 = coin-flip at 50%).${cLine} The scoreboard is on the dashboard.`);
+            `You ${yourLine} (0 = perfect, 0.25 = coin-flip at 50%).${cLine}${revised} Scored every day you held a number — the scoreboard is on the dashboard.`);
     }
 }
 if (changed) writeFileSync(FILE, JSON.stringify(db, null, 1));
