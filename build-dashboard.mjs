@@ -78,7 +78,7 @@ const DIR = {
     WFRBST01134: 'bad', WFRBSB50215: 'good', PRS85006173: 'good', MEHOINUSA672N: 'good',
     SIPOVGINIUSA: 'bad', WEALTHGAP: 'bad', GFDEGDQ188S: 'bad', FYOIGDA188S: 'bad',
     WFRBSTP1300: 'bad', WFRBST01122: 'bad', A006RE1Q156NBEA: 'good', WEALTHGDP: 'bad',
-    RENTWAGE: 'bad',
+    RENTWAGE: 'bad', BETA: 'bad', CAPSHARE: 'bad', PUBWEALTH: 'good',
 };
 
 // Historical tendencies at extremes — study prompts with base rates, not signals.
@@ -139,6 +139,14 @@ const EXTREME_NOTES = {
         playHigh: 'Historically: heavy completions favour renters and squeeze landlord pricing power, concentrated in whichever metros did the building. Watch starts for what comes next, because completions follow starts by about two years.', playLow: 'Historically: thin supply has historically meant rent growth reaccelerating with a lag.' },
     HOUST5F: { low: 'Few apartments are being started, which sets supply roughly two years out. Weak starts today are the reason for a rent squeeze later, long after everyone has stopped talking about it.', high: 'Heavy building underway; the supply lands in about two years.',
         playLow: 'Historically: a thin pipeline is the leading indicator for the next round of rent pressure, and it usually appears while rent inflation still looks tame.', playHigh: 'Historically: a full pipeline caps future rent growth in the metros doing the building.' },
+    BETA: { high: 'Piketty\'s central ratio at a modern record: private wealth is worth nearly seven years of national income. Europe before 1914 ran near seven; the wars and postwar policy crushed it to three; the climb back started around 1980. High beta means society\'s past (accumulated, inherited wealth) weighs more against its present (what work produces this year).', low: 'Wealth low relative to income — the mid-century configuration, when work out-earned ownership.',
+        playHigh: 'Historically: high-beta eras favour owning assets over selling labour, right up until they end — and they have historically ended through policy, inflation or catastrophe rather than markets.', playLow: 'Historically: low-beta eras were when wages could actually buy into the asset base — the years the middle class was built.' },
+    CAPSHARE: { high: 'Capital\'s slice of national income near its postwar record: of every dollar the economy generates, more goes to owners of assets and less to people doing work. This is the same story as the labor-share chart, seen from the other side.', low: 'Labour taking the larger slice — the 1970s configuration.',
+        playHigh: 'Historically: fat capital shares support profits and equities but build political pressure; the reversals came through unionisation, tax policy and tight labour markets, not through markets correcting themselves.', playLow: 'Historically: labour-heavy splits squeezed margins and equities but supported broad consumption.' },
+    RETCAP: { low: 'The measured return on each dollar of capital is near its record LOW — not because owners earn less in total (their share is at a high) but because the wealth pile has grown faster than the income it throws off. This is Marx\'s falling rate of profit, visible in the data — it fell from ~10% postwar to under 6% — but it stabilised instead of collapsing to zero, which is why his end-state never arrived.', high: 'Each dollar of capital earning historically fat returns — the postwar configuration.',
+        playLow: 'Historically: when r compresses, owners reach for yield — leverage, buybacks, private credit, exotic assets. Compressed r with rising asset prices is the signature of paying more for the same income stream.', playHigh: 'Historically: fat returns on capital made simply owning productive assets the whole game.' },
+    PUBWEALTH: { low: 'The state owns less than it owes: public net worth is negative. In 1980 the public sector was worth +38% of a year\'s national income; it is now around −40%. Piketty\'s point: rich countries are rich — the wealth did not vanish, it moved from public balance sheets to private ones, via deficits (private holders own the debt) and privatisation.', high: 'The state a net owner — the postwar configuration that funded infrastructure from a position of strength.',
+        playLow: 'Historically: negative public wealth constrains what states can do without taxing or inflating, and both eventually reach for whichever is politically cheaper. Bondholders and top-bracket taxpayers are the parties at that table.', playHigh: 'Historically: solvent states could build; the era of negative public wealth is the era of user fees and asset sales.' },
     RENTWAGE: { high: 'Rent is taking more hours of work to cover than at almost any point in the series. This is the cost-of-living squeeze in the form people actually experience it, and it does not show up in the headline inflation rate once rent stops accelerating.', low: 'Rent unusually cheap relative to pay.',
         playHigh: 'Historically: when housing costs outrun pay, discretionary spending gets crowded out with a lag, and the pressure shows up first at discount retailers and in credit card balances rather than in aggregate spending data. Note also that subsidies aimed at renters historically raised rents where supply was fixed, because the landlord captures them.', playLow: 'Historically: cheap housing relative to wages freed up discretionary spending.' },
     WEALTHGDP: { high: 'The value of everything households own is at a near-record multiple of what the economy produces in a year. It was 3.5x in 1985. When claims grow faster than output, the gap is paid for by higher prices on the same assets rather than by more production, which is why owning assets has beaten earning wages.', low: 'Asset values low relative to the economy, which historically preceded strong long-run returns.',
@@ -260,6 +268,80 @@ const pReal = (id) => built[id + '_R']?.p ?? null;
                 derived: true, pts, latest: pts[pts.length - 1][1], asOf: pts[pts.length - 1][0], stale: false,
                 d3: delta(pts, 3), d12: delta(pts, 12), p: pctile(pts), since: pts[0][0].slice(0, 4),
             };
+        }
+    }
+}
+
+// ── Piketty's ratios ────────────────────────────────────────────────────────
+// From Capital in the Twenty-First Century. Everything is measured against
+// NATIONAL INCOME rather than GDP, which is Piketty's denominator throughout.
+//
+//   beta  = private wealth / national income. The book's central variable. It
+//           ran near 700% in pre-1914 Europe, collapsed to 200-300% by 1950 as
+//           two wars, inflation and expropriation destroyed capital, and has
+//           been climbing back ever since.
+//   alpha = capital's share of national income = 1 - labour's share.
+//   r     = alpha / beta. Piketty's own derivation of the return on capital.
+//   g     = real growth. When r exceeds g, existing wealth compounds faster
+//           than the economy grows, so inherited capital pulls away from wages.
+//           Marx expected r to fall to zero and it did not; Piketty's data shows
+//           it sitting around 4-5% for two centuries.
+{
+    const ni = load('NICUR');                 // $bn, quarterly
+    const nw = load('TNWBSHNO');              // $m
+    const coe = load('COE');                  // $bn
+    const fed = load('FGNETWQ027S');          // $m
+    const sl = load('SLGTPAQ027S');           // $m
+    if (ni && nw) {
+        const niMap = new Map(toMonthly(ni));
+        const pts = toMonthly(nw).map(([m, v]) => niMap.get(m) ? [m, (v / 1000) / niMap.get(m) * 100] : null).filter(Boolean);
+        if (pts.length > 24) {
+            built['BETA'] = {
+                id: 'BETA', label: 'Private Wealth ÷ National Income (β)', unit: '%', dec: 0, group: 'ineq',
+                derived: true, pts, latest: pts[pts.length - 1][1], asOf: pts[pts.length - 1][0], stale: false,
+                d3: delta(pts, 3), d12: delta(pts, 12), p: pctile(pts), since: pts[0][0].slice(0, 4),
+            };
+        }
+        // Public wealth: what the state owns minus what it owes. Piketty's point
+        // is that this has gone to zero or below across the rich world while
+        // private wealth soared — the same assets, transferred.
+        if (fed && sl) {
+            const slMap = new Map(toMonthly(sl));
+            const pub = toMonthly(fed).map(([m, v]) => slMap.get(m) != null && niMap.get(m) ? [m, ((v + slMap.get(m)) / 1000) / niMap.get(m) * 100] : null).filter(Boolean);
+            if (pub.length > 24) {
+                built['PUBWEALTH'] = {
+                    id: 'PUBWEALTH', label: 'Public Wealth ÷ National Income', unit: '%', dec: 0, group: 'ineq',
+                    derived: true, pts: pub, latest: pub[pub.length - 1][1], asOf: pub[pub.length - 1][0], stale: false,
+                    d3: delta(pub, 3), d12: delta(pub, 12), p: pctile(pub), since: pub[0][0].slice(0, 4),
+                };
+            }
+        }
+        // r = alpha / beta, where alpha = 1 - (compensation / national income)
+        if (coe) {
+            const coeMap = new Map(toMonthly(coe));
+            const betaMap = new Map(pts);
+            const rr = [...betaMap.keys()].map(m => {
+                const c = coeMap.get(m), n = niMap.get(m), b = betaMap.get(m);
+                if (c == null || !n || !b) return null;
+                const alpha = 1 - c / n;
+                return [m, alpha / (b / 100) * 100];       // percent per year
+            }).filter(Boolean);
+            if (rr.length > 24) {
+                built['RETCAP'] = {
+                    id: 'RETCAP', label: 'Return on Capital (r = α ÷ β)', unit: '%', dec: 1, group: 'ineq',
+                    derived: true, pts: rr, latest: rr[rr.length - 1][1], asOf: rr[rr.length - 1][0], stale: false,
+                    d3: delta(rr, 3), d12: delta(rr, 12), p: pctile(rr), since: rr[0][0].slice(0, 4),
+                };
+            }
+            // Capital's share of national income, displayed in its own right
+            const al = [...coeMap.keys()].map(m => { const n = niMap.get(m); return n ? [m, (1 - coeMap.get(m) / n) * 100] : null; }).filter(Boolean);
+            if (al.length > 24) {
+                built['CAPSHARE'] = {
+                    id: 'CAPSHARE', label: 'Capital Share of Income (α)', unit: '%', dec: 1, group: 'ineq',
+                    derived: true, pts: al, latest: al[al.length - 1][1], asOf: al[al.length - 1][0], stale: false,
+                    d3: delta(al, 3), d12: delta(al, 12), p: pctile(al), since: al[0][0].slice(0, 4),
+                };
+            }
         }
     }
 }

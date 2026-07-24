@@ -107,6 +107,12 @@ export const SERIES = [
     // Inputs for wealth-to-output (the financialisation ratio)
     { id: 'TNWBSHNO',      label: 'Household Net Worth',              unit: '$', kind: 'level', dec: 0, group: 'meta', optional: true },
     { id: 'GDP',           label: 'Nominal GDP',                      unit: '$', kind: 'level', dec: 0, group: 'meta', optional: true },
+    // Piketty inputs: national income is his denominator, not GDP. Public net
+    // worth is split federal / state-local because they point opposite ways.
+    { id: 'NICUR',         label: 'National Income',                  unit: '$', kind: 'level', dec: 0, group: 'meta', optional: true },
+    { id: 'COE',           label: 'Compensation of Employees',        unit: '$', kind: 'level', dec: 0, group: 'meta', optional: true },
+    { id: 'FGNETWQ027S',   label: 'Federal Govt Net Worth',           unit: '$', kind: 'level', dec: 0, group: 'meta', optional: true },
+    { id: 'SLGTPAQ027S',   label: 'State & Local Govt Net Worth',     unit: '$', kind: 'level', dec: 0, group: 'meta', optional: true },
     // ── Sovereign debt (US structure; world levels come from debt.json/IMF) ──
     { id: 'GFDEGDQ188S', label: 'US Federal Debt / GDP',        unit: '%', kind: 'level', dec: 1, group: 'debt', optional: true },
     { id: 'FYOIGDA188S', label: 'US Interest Cost / GDP',       unit: '%', kind: 'level', dec: 2, group: 'debt', optional: true },
