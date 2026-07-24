@@ -35,15 +35,28 @@ export function evaluateForecast(f, obs, today, { provisional = false } = {}) {
     }
     if (!inWindow.length || today < f.deadline) return null;
     const last = inWindow[inWindow.length - 1];
-    // Resolve as soon as the deciding print has landed rather than waiting a
-    // fixed day: waiting is only needed because a monthly deadline can arrive
-    // before its print publishes, and judging a stale observation would lock in
-    // the wrong answer. Freshness relative to the series' own publishing rhythm
-    // answers that directly. The long-stop stops a question hanging forever if
-    // a series is discontinued.
-    const stale = days(last.d, f.deadline) > medianGap(obs) * 1.6;
-    if (stale && days(f.deadline, today) < 30) return null;
-    return { outcome: test(f.resolve.op, last.v, f.resolve.value) ? 1 : 0, when: last.d, deciding: last.v, stale };
+
+    // Two kinds of deadline, and confusing them resolves on the wrong day.
+    //
+    // 'close' (default) — a market price question: "VIX ends Jul 24 above 18.8".
+    // The observation is dated by the trading day itself, so the Jul 24 close
+    // must actually exist. Without this check the deadline arriving is enough to
+    // resolve, and it judges Thursday's close for a question about Friday's.
+    // Deadlines landing on a weekend or holiday never get their own observation,
+    // hence the grace period before falling back to the last available price.
+    //
+    // 'release' — an economic release: "claims print above 208k on Jul 23".
+    // The observation is dated by reference period (week ending Jul 18) and
+    // publishes ON the deadline, so it is legitimately dated earlier. Here the
+    // test is whether the print is fresh relative to how often the series
+    // publishes, with a long-stop so a discontinued series cannot hang forever.
+    if ((f.resolve.at || 'close') === 'close') {
+        if (last.d < f.deadline && days(f.deadline, today) < 5) return null;
+    } else {
+        const stale = days(last.d, f.deadline) > medianGap(obs) * 1.6;
+        if (stale && days(f.deadline, today) < 30) return null;
+    }
+    return { outcome: test(f.resolve.op, last.v, f.resolve.value) ? 1 : 0, when: last.d, deciding: last.v };
 }
 
 // The close date used for scoring: for a scheduled release the deadline IS the

@@ -93,5 +93,31 @@ const f7 = { p: 0.5, answeredOn: '2026-07-10', created: '2026-07-01',
     pHistory: [{ p: 0.3, on: '2026-07-05' }, { p: 0.1, on: '2026-07-01' }] };
 eq('sorted ascending', timeline(f7).map(e => e.on + ':' + e.p), ['2026-07-01:0.1', '2026-07-05:0.3', '2026-07-10:0.5']);
 
+console.log('\nresolution timing: market close vs economic release');
+const { evaluateForecast } = await import('./resolve.mjs');
+const px = (dates) => dates.map(([d, v]) => ({ d, v }));
+
+// A market-price question must wait for the observation dated ON its deadline.
+const vix = { created: '2026-07-21', deadline: '2026-07-24',
+    resolve: { series: 'VIXCLS', op: '>', value: 18.77, mode: 'final', from: '2026-07-21' } };
+const thuOnly = px([['2026-07-21', 17.1], ['2026-07-22', 16.6], ['2026-07-23', 16.9]]);
+eq('deadline arrived but only prior closes exist -> wait',
+    evaluateForecast(vix, thuOnly, '2026-07-24'), null);
+const withFri = px([...thuOnly, { d: '2026-07-24', v: 19.4 }].map(o => [o.d, o.v]));
+const vr = evaluateForecast(vix, withFri, '2026-07-24');
+eq('resolves once the deadline close exists', vr.when, '2026-07-24');
+eq('and judges that close', vr.outcome, 1);
+// weekend/holiday deadline: no observation will ever be dated that day
+eq('falls back after the grace period',
+    evaluateForecast({ ...vix, deadline: '2026-07-25' }, thuOnly, '2026-08-01').when, '2026-07-23');
+
+// A release question is dated by reference period, so an earlier date is right.
+const icsa = { created: '2026-07-17', deadline: '2026-07-23',
+    resolve: { series: 'ICSA', op: '>', value: 208, mode: 'final', at: 'release', from: '2026-07-12' } };
+const claims = px([['2026-07-18', 187]]);
+const ir = evaluateForecast(icsa, claims, '2026-07-23');
+eq('release question resolves on its release day', ir.when, '2026-07-18');
+eq('187 is not above 208', ir.outcome, 0);
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

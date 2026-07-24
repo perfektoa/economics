@@ -124,7 +124,9 @@ if (claimsNow != null && claimsAt) ask({
     // print rather than three days later. Once the number is public, every extra
     // day is a known answer being scored, which is free points for whoever looks.
     askBy: plusDays(nextThu, -1), deadline: nextThu,
-    resolve: { series: 'ICSA', op: '>', value: +claimsNow.toFixed(1), mode: 'final', from: plusDays(claimsAt, 1) },
+    // at:'release' — the print is dated by reference week and publishes on the
+    // deadline, so it is legitimately dated earlier than the deadline itself.
+    resolve: { series: 'ICSA', op: '>', value: +claimsNow.toFixed(1), mode: 'final', at: 'release', from: plusDays(claimsAt, 1) },
 });
 // Answer windows run until the day before the event so an evening check-in
 // never misses one — two weeklies expired unanswered under a 3-day window.
