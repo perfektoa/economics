@@ -87,6 +87,52 @@ const BLS_SOURCED = new Set([
 ]);
 const BLS_NOTE = 'Published by the BLS. Sample sizes have been cut and response rates are falling — a swing of under 50 survey responses can move the unemployment rate by 0.1 point. Single-month moves in this series are weak evidence on their own.';
 
+// Plain-English explanation of what each indicator IS, and what pushes it each
+// way. Shown on forecast questions so answering one does not require already
+// knowing the jargon.
+const PLAIN = {
+    T10Y2Y: ['The gap between what the government pays to borrow for 10 years and for 2 years, in percentage points.',
+        'Normally lending for longer earns more, so the gap is positive. It NARROWS when short rates rise or long rates fall, and WIDENS when the Fed cuts (which pulls the 2-year down) or when investors demand more for long-term inflation risk. Below zero is "inverted", which has preceded every US recession since the 1970s.'],
+    DFEDTARU: ['The top of the Fed\'s target range for overnight lending between banks — the rate everything else is priced off.',
+        'It only moves when the Fed votes to move it, at eight scheduled meetings a year. Higher means tightening, lower means easing.'],
+    CPIAUCSL: ['The Consumer Price Index: the cost of a fixed basket of goods and services. Inflation is how much it rose versus a year earlier.',
+        'Pushed up by energy, rent and wages; pulled down by falling commodity prices and weak demand. Rent alone is about a third of the basket.'],
+    T5YIFR: ['What bond markets expect inflation to average over five years, starting five years from now — the market\'s view of long-run inflation.',
+        'It is a measure of credibility rather than current prices: it moves when investors change their mind about whether inflation gets controlled eventually.'],
+    UNRATE: ['The share of people who want a job and cannot find one. It counts only those actively looking — people who give up stop counting.',
+        'It drifts down slowly during expansions and jumps violently in recessions. A flat reading is common: about a quarter of months show no change at all.'],
+    ICSA: ['How many people filed for unemployment benefits for the first time last week — the fastest read on layoffs there is.',
+        'Rising claims mean firing is picking up. Very low claims mean almost nobody is being let go. It is weekly and noisy, so single prints mislead.'],
+    YH_SPX: ['The S&P 500 — the 500 largest US listed companies, weighted by size.',
+        'Historically rises in about 60% of any given three-month window. Currently the largest five companies are a fifth of the whole index, so it is less diversified than it looks.'],
+    YH_NDX: ['The Nasdaq Composite — heavily weighted toward technology.',
+        'More volatile than the S&P 500 in both directions, because it is concentrated in fewer, faster-growing companies.'],
+    YH_GOLD: ['The price of an ounce of gold.',
+        'Historically rises when inflation-adjusted interest rates fall, when governments look fiscally strained, and when people distrust currencies. It pays no income, so it competes badly when safe rates are high.'],
+    YH_SILVER: ['The price of an ounce of silver.',
+        'Follows gold but moves further in both directions, because roughly half of demand is industrial rather than monetary.'],
+    PCOPPUSDM: ['The price of a tonne of copper — nicknamed "Dr. Copper" for tracking global industrial activity.',
+        'Rises with construction, electrification and manufacturing demand; falls when global growth slows. Supply is slow to respond, so shortages persist.'],
+    DCOILWTICO: ['The price of a barrel of US crude oil.',
+        'Driven by supply disruptions and global demand. Acts as a tax on consumers when it spikes, and eventually kills its own demand.'],
+    BAMLH0A0HYM2: ['The extra interest that risky, low-rated companies must pay over what the US government pays — the market\'s price for corporate default risk.',
+        'It NARROWS when lenders feel safe and WIDENS fast when they get scared. Currently near record tights, meaning almost no cushion if sentiment turns.'],
+    VIXCLS: ['How much price movement options traders expect in the S&P 500 over the next month. Often called the fear gauge.',
+        'Grinds lower during calm stretches and spikes on shocks. Spikes are usually short-lived; it reverts toward the mid-to-high teens.'],
+    HOUST: ['How many new homes builders began construction on, at an annual rate.',
+        'Very sensitive to mortgage rates, and one of the earliest indicators to turn before a recession. Also extremely noisy month to month.'],
+    MORTGAGE30US: ['The average rate on a 30-year fixed mortgage.',
+        'Tracks the 10-year Treasury yield rather than the Fed\'s rate directly, so Fed cuts do not automatically bring it down.'],
+    DTWEXBGS: ['The dollar measured against a basket of trading partners\' currencies, weighted by trade volume.',
+        'Rises when US rates are relatively high or when investors want safety; falls when the Fed eases more than others do.'],
+    YH_USDJPY: ['How many yen one dollar buys. Higher means a weaker yen.',
+        'Driven by the gap between US and Japanese interest rates. When it gets stretched, unwinds can be sudden and violent — August 2024 forced global selling.'],
+    YH_BTC: ['The price of one bitcoin.',
+        'Trades mostly on liquidity and risk appetite. Far more volatile than any other asset here.'],
+    UMCSENT: ['A survey asking households how they feel about their finances and the economy.',
+        'Tracks prices at the pump and the supermarket more than it tracks unemployment. Historically a contrarian marker: troughs have preceded above-average stock returns.'],
+};
+
 // Directionality: is a HIGH value good, bad, or not a moral question?
 const DIR = {
     GDPNOW: 'good', A191RL1Q225SBEA: 'good', PAYEMS: 'good', INDPRO: 'good', UMCSENT: 'good', HOUST: 'good',
@@ -978,10 +1024,38 @@ You've opened the dashboard as a plain file, so the answer buttons are hidden.
     <span style="color:var(--muted);font-size:11px;" title="Good Judgment Project convention: your number is scored on every day you held it, then averaged, and it carries forward until you change it. So a call you got right early scores well on every one of those days, while a correction made two days before the deadline only improves two days. Late updates are allowed — they are just nearly worthless, which is why nothing needs locking. Superforecasters average 0.166; regular forecasters 0.259.">daily-averaged ⓘ</span>
     <a id="fc-toggle" href="#" style="display:none;color:var(--muted);margin-left:auto;font-size:11px;">+ custom call</a>
 </div>
-${questions.map(f => `<div style="padding:8px 12px;border-bottom:1px solid var(--line);background:rgba(232,178,60,0.05);">
+${questions.map(f => {
+    // Everything needed to answer without leaving the page: what the indicator
+    // is, where it stands, what it has done lately, and how often history says
+    // the condition holds. Being stuck for lack of a reference is a UI failure.
+    const sid = f.resolve?.series;
+    // Some question series (the Fed target) are group 'meta' and never charted,
+    // so fall back to the raw cache rather than showing nothing.
+    let s = sid ? built[sid] : null;
+    if (!s && sid) {
+        const raw = load(sid);
+        if (raw?.length) {
+            const scale = SERIES.find(x => x.id === sid)?.scale || 1;
+            const pts = toMonthly(raw).map(([m, v]) => [m, v * scale]);
+            const m2 = SERIES.find(x => x.id === sid);
+            s = { id: sid, label: m2?.label || sid, unit: m2?.unit || '', dec: m2?.dec ?? 2,
+                pts, latest: pts[pts.length - 1][1], asOf: pts[pts.length - 1][0],
+                p: pctile(pts), since: pts[0][0].slice(0, 4), noChart: true };
+        }
+    }
+    const plain = sid ? PLAIN[sid] : null;
+    const hist = s ? s.pts.slice(-8) : [];
+    const spark = hist.length > 1 ? hist.map(([m, v]) => `${m.slice(2).replace('-', '/')} ${v.toFixed(s.dec)}`).join('   ') : '';
+    const gapPct = (s && f.resolve?.value) ? (s.latest / f.resolve.value - 1) * 100 : null;
+    return `<div style="padding:8px 12px;border-bottom:1px solid var(--line);background:rgba(232,178,60,0.05);">
     <div><span style="color:var(--accent);font-weight:700;">ASK</span>
     <span style="color:var(--ink);"> ${esc(f.question)}?</span>
     <span style="color:var(--muted);"> — ${esc(f.why || '')} Answer by ${f.askBy || f.deadline}.</span></div>
+    ${plain ? `<div style="color:var(--muted);font-size:11px;margin-top:4px;padding-left:8px;border-left:2px solid var(--line);">
+        <b style="color:var(--ink);">What this is:</b> ${esc(plain[0])}<br>
+        <b style="color:var(--ink);">What moves it:</b> ${esc(plain[1])}
+        ${s ? `<br><b style="color:var(--ink);">Where it stands:</b> ${s.latest.toFixed(s.dec)}${esc(s.unit)} as of ${s.asOf}${gapPct != null ? `, which is ${Math.abs(gapPct).toFixed(1)}% ${gapPct >= 0 ? 'above' : 'below'} the ${f.resolve.value} threshold` : ''} · ${ord(s.p)} percentile of its own history since ${s.since}${spark ? `<br><span style="font-family:inherit;">recent: ${esc(spark)}</span>` : ''}${s.noChart ? '' : `<br><a href="#chart-${esc(sid)}" style="color:var(--accent);">see the full chart ↓</a>`}` : ''}
+    </div>` : ''}
     <div class="fc-q" data-id="${f.id}" style="display:none;align-items:center;gap:10px;margin-top:6px;">
         <span style="color:var(--bad);font-size:11px;">NO</span>
         <input type="range" min="1" max="99" value="50" style="flex:1;max-width:260px;accent-color:var(--accent);">
@@ -990,7 +1064,7 @@ ${questions.map(f => `<div style="padding:8px 12px;border-bottom:1px solid var(-
         <button class="fc-lock" style="background:none;border:1px solid var(--accent);color:var(--accent);border-radius:4px;padding:2px 12px;font:inherit;font-size:12px;cursor:pointer;">Lock it in</button>
         <button class="fc-pass" style="background:none;border:1px solid var(--line);color:var(--muted);border-radius:4px;padding:2px 10px;font:inherit;font-size:12px;cursor:pointer;">Pass</button>
     </div>
-</div>`).join('')}
+</div>`; }).join('')}
 ${open.map(f => {
     const todayISO = new Date().toISOString().slice(0, 10);
     const editable = f.deadline >= todayISO;      // updates stay open; daily averaging makes late ones nearly worthless
@@ -1362,6 +1436,7 @@ function render() {
         svg += '<circle cx="' + lx + '" cy="' + ly + '" r="3" fill="' + ACCENT + '"/>';
         const card = document.createElement('div');
         card.className = 'card';
+        card.id = 'chart-' + s.id;          // lets forecast questions link straight here
         card.innerHTML = '<h3>' + s.label + ' <span class="sub">' + s.latest.toFixed(s.dec) + s.unit + ' · ' + s.asOf + '</span></h3>' +
             '<svg viewBox="0 0 ' + W + ' ' + H + '" data-id="' + s.id + '"></svg>';
         card.querySelector('svg').innerHTML = svg;
