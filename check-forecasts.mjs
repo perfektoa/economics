@@ -3,7 +3,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { SERIES } from './series.mjs';
 import { dailyBrier } from './brier.mjs';
-import { evaluateForecast, closeDateFor, pubLag } from './resolve.mjs';
+import { evaluateForecast, closeDateFor, pubLag, FASTER_SOURCE } from './resolve.mjs';
 
 const FILE = new URL('./forecasts.json', import.meta.url);
 if (!existsSync(FILE)) { console.log('no forecasts.json yet'); process.exit(0); }
@@ -33,7 +33,11 @@ for (const f of db.forecasts) {
     if (!obs) continue;
     // resolve.from overrides created for series whose obs are dated by reference
     // period (e.g. UNRATE prints dated the 1st of the prior month).
-    const ev = evaluateForecast(f, obs, today, { pubLagDays: pubLag(f.resolve.series) });
+    const altId = FASTER_SOURCE[f.resolve.series];
+    const ev = evaluateForecast(f, obs, today, {
+        pubLagDays: pubLag(f.resolve.series),
+        altObs: altId ? seriesObs(altId) : null,
+    });
     const outcome = ev?.outcome ?? null, when = ev?.when ?? null;
     if (outcome != null) {
         // The retroactive close must be the day the answer became KNOWABLE, not
@@ -46,6 +50,7 @@ for (const f of db.forecasts) {
         f.outcome = outcome;
         f.resolvedRef = when;
         f.resolvedOn = closeDateFor(f, when, today);
+        if (ev.viaFallback) f.settledBy = `${altId} (its own feed had not published by the deadline; the reading was far enough from the threshold that the difference between the two could not change the answer)`;
         changed = true;
         const you = dailyBrier(f, 'user');
         const cl = dailyBrier(f, 'claude');

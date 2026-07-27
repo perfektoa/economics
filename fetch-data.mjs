@@ -16,18 +16,42 @@ const force = process.argv.includes('--force');
 // monthly/quarterly macro series only refetch once a day.
 const FAST = new Set(['T10Y2Y', 'VIXCLS', 'DCOILWTICO', 'DTWEXBGS', 'DHHNGSP', 'ECBDFR', 'BAMLH0A0HYM2', 'T5YIFR']);
 const cacheMsFor = (s) => (s.src === 'yahoo' || FAST.has(s.id)) ? 50 * 60 * 1000 : 20 * 3600 * 1000;
+// Yahoo series that forecast questions resolve against need daily closes, not
+// just monthly bars — you cannot settle "where does oil close on Friday" from a
+// monthly bar. Two years of dailies are spliced onto the long monthly history.
+const DAILY_NEEDED = new Set(['YH_CL', 'YH_VIX', 'YH_GOLD', 'YH_SILVER', 'YH_HG', 'YH_SPX', 'YH_NDX', 'YH_BTC', 'YH_USDJPY']);
 
 let yfInstance = null;
-async function fetchYahoo(sym) {
+async function fetchYahoo(sym, wantDaily) {
     if (!yfInstance) {
         const { default: YahooFinance } = await import('yahoo-finance2');
         yfInstance = new YahooFinance();
     }
+    // Monthly bars back to 1950 give the long history the charts and percentile
+    // engine need. But a forecast question asking "where does this close on
+    // Friday" cannot be settled by a monthly bar, so series used in questions
+    // also get two years of DAILY closes spliced onto the end.
     const r = await yfInstance.chart(sym, { period1: '1950-01-01', interval: '1mo' });
     if (!r || !Array.isArray(r.quotes)) throw new Error('no quotes');
-    return r.quotes
+    let out = r.quotes
         .filter(q => q && isFinite(q.close))
         .map(q => ({ d: new Date(q.date).toISOString().slice(0, 10), v: q.close }));
+    if (wantDaily) {
+        const from = new Date(Date.now() - 730 * 86400e3).toISOString().slice(0, 10);
+        try {
+            const d = await yfInstance.chart(sym, { period1: from, interval: '1d' });
+            const daily = (d?.quotes || [])
+                .filter(q => q && isFinite(q.close))
+                .map(q => ({ d: new Date(q.date).toISOString().slice(0, 10), v: q.close }));
+            if (daily.length > 30) {
+                const cut = daily[0].d;
+                out = [...out.filter(o => o.d < cut), ...daily];
+            }
+        } catch (_) { /* keep monthly-only rather than fail the series */ }
+    }
+    // Dedupe by date, last wins, then sort.
+    const m = new Map(out.map(o => [o.d, o.v]));
+    return [...m.entries()].map(([d, v]) => ({ d, v })).sort((a, b) => a.d.localeCompare(b.d));
 }
 
 async function fetchSeries(id) {
@@ -49,7 +73,7 @@ for (const s of SERIES) {
         cached++; continue;
     }
     try {
-        const obs = s.src === 'yahoo' ? await fetchYahoo(s.sym) : await fetchSeries(s.id);
+        const obs = s.src === 'yahoo' ? await fetchYahoo(s.sym, DAILY_NEEDED.has(s.id)) : await fetchSeries(s.id);
         if (obs.length === 0) throw new Error('empty series');
         writeFileSync(file, JSON.stringify({ id: s.id, fetchedAt: new Date().toISOString(), obs }));
         console.log(`ok      ${s.id.padEnd(20)} ${obs.length} obs  (${obs[0].d} .. ${obs[obs.length - 1].d})`);

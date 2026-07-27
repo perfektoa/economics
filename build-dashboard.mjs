@@ -6,7 +6,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { SERIES } from './series.mjs';
 import { dailyBrier, averageBrier, hitRate, heldStats, timeline } from './brier.mjs';
-import { evaluateForecast, closeDateFor, pubLag } from './resolve.mjs';
+import { evaluateForecast, closeDateFor, pubLag, FASTER_SOURCE } from './resolve.mjs';
 
 const DATA_DIR = new URL('./data/', import.meta.url);
 const load = (id) => {
@@ -983,7 +983,13 @@ The board writes its own questions — they appear before FOMC decisions and job
         const raw = load(f.resolve.series);
         if (!raw) return null;
         const scale = SERIES.find(s => s.id === f.resolve.series)?.scale || 1;
-        const ev = evaluateForecast(f, raw.map(o => ({ d: o.d, v: o.v * scale })), todayISO2, { pubLagDays: pubLag(f.resolve.series) });
+        const altId = FASTER_SOURCE[f.resolve.series];
+        const altRaw = altId ? load(altId) : null;
+        const altScale = altId ? (SERIES.find(x => x.id === altId)?.scale || 1) : 1;
+        const ev = evaluateForecast(f, raw.map(o => ({ d: o.d, v: o.v * scale })), todayISO2, {
+            pubLagDays: pubLag(f.resolve.series),
+            altObs: altRaw ? altRaw.map(o => ({ d: o.d, v: o.v * altScale })) : null,
+        });
         if (!ev) return null;
         return { ...ev, sim: { ...f, outcome: ev.outcome, resolvedRef: ev.when, resolvedOn: closeDateFor(f, ev.when, todayISO2) } };
     };

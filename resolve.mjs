@@ -37,7 +37,16 @@ function medianGap(obs) {
     return gaps[Math.floor(gaps.length / 2)] || 400;
 }
 
-export function evaluateForecast(f, obs, today, { pubLagDays = 0 } = {}) {
+// A faster feed for the same underlying thing. Used only to settle a question
+// whose own feed has not published by the deadline. The two are not identical —
+// FRED quotes WTI spot while Yahoo quotes the front-month future, and they
+// differ by a small basis — so the fallback is allowed to decide only when the
+// reading is far enough from the threshold that no plausible basis could flip
+// it. Inside that band we wait for the real series rather than guess.
+export const FASTER_SOURCE = { DCOILWTICO: 'YH_CL', VIXCLS: 'YH_VIX' };
+const BASIS_GUARD = 0.02;   // 2% — comfortably wider than spot-vs-futures basis
+
+export function evaluateForecast(f, obs, today, { pubLagDays = 0, altObs = null } = {}) {
     if (!f?.resolve || !obs?.length) return null;
     const from = f.resolve.from || f.created;
     const inWindow = obs.filter(o => o.d >= from && o.d <= f.deadline);
@@ -49,8 +58,11 @@ export function evaluateForecast(f, obs, today, { pubLagDays = 0 } = {}) {
         if (today > f.deadline) return { outcome: 0, when: f.deadline, deciding: null };
         return null;
     }
-    if (!inWindow.length || today < f.deadline) return null;
-    const last = inWindow[inWindow.length - 1];
+    if (today < f.deadline) return null;
+    // The primary feed may have NO observation in the window at all — a
+    // seven-day-late series against a three-day question window. That is
+    // exactly when a faster feed matters, so this must not bail early.
+    const last = inWindow.length ? inWindow[inWindow.length - 1] : null;
 
     // Two kinds of deadline, and confusing them resolves on the wrong day.
     //
@@ -67,17 +79,29 @@ export function evaluateForecast(f, obs, today, { pubLagDays = 0 } = {}) {
     // test is whether the print is fresh relative to how often the series
     // publishes, with a long-stop so a discontinued series cannot hang forever.
     if ((f.resolve.at || 'close') === 'close') {
-        // The grace period must exceed the series' own publication lag, or a
-        // slow feed resolves on a stale price. Measured lags differ wildly:
-        // gold and the Fed target are same-day, VIX runs ~4 days behind, and
-        // FRED's WTI spot runs ~7. A flat 5-day grace would have judged a
-        // July 24 oil question on July 20's price.
-        const grace = Math.max(5, pubLagDays + 3);
-        if (last.d < f.deadline && days(f.deadline, today) < grace) return null;
+        if (!last || last.d < f.deadline) {
+            // The primary feed has not reached the deadline. If a faster feed
+            // has, and its reading is nowhere near the threshold, settle now.
+            const altIn = (altObs || []).filter(o => o.d >= (f.resolve.from || f.created) && o.d <= f.deadline);
+            const altLast = altIn.length ? altIn[altIn.length - 1] : null;
+            if (altLast && altLast.d >= f.deadline && Math.abs(altLast.v / f.resolve.value - 1) > BASIS_GUARD) {
+                return {
+                    outcome: test(f.resolve.op, altLast.v, f.resolve.value) ? 1 : 0,
+                    when: altLast.d, deciding: altLast.v, viaFallback: true,
+                };
+            }
+            // Otherwise wait — but only as long as this feed's own publication
+            // lag warrants. Measured lags differ wildly: gold and the Fed target
+            // are same-day, VIX ~4 days, FRED's WTI spot ~7.
+            const grace = Math.max(5, pubLagDays + 3);
+            if (days(f.deadline, today) < grace) return null;
+        }
     } else {
+        if (!last) return null;
         const stale = days(last.d, f.deadline) > medianGap(obs) * 1.6;
         if (stale && days(f.deadline, today) < 30) return null;
     }
+    if (!last) return null;      // grace expired with nothing to judge
     return { outcome: test(f.resolve.op, last.v, f.resolve.value) ? 1 : 0, when: last.d, deciding: last.v };
 }
 
