@@ -42,6 +42,9 @@ export const SERIES = [
     { id: 'YH_GOLD',   sym: 'GC=F',      src: 'yahoo', label: 'Gold',            unit: '$', kind: 'level', dec: 0, group: 'mkt', optional: true },
     { id: 'YH_SILVER', sym: 'SI=F',      src: 'yahoo', label: 'Silver',          unit: '$', kind: 'level', dec: 1, group: 'mkt', optional: true },
     { id: 'YH_BTC',    sym: 'BTC-USD',   src: 'yahoo', label: 'Bitcoin',         unit: '$', kind: 'level', dec: 0, group: 'mkt', optional: true },
+    // Same index as FRED's VIXCLS but published same-day rather than 3-4 days
+    // late, so forecast questions on it resolve when the market does.
+    { id: 'YH_VIX',    sym: '^VIX',      src: 'yahoo', label: 'VIX (live)',      unit: '',  kind: 'level', dec: 1, group: 'meta', optional: true },
     { id: 'YH_SPX',    sym: '^GSPC',     src: 'yahoo', label: 'S&P 500',         unit: '',  kind: 'level', dec: 0, group: 'idx', optional: true },
     { id: 'YH_NDX',    sym: '^IXIC',     src: 'yahoo', label: 'Nasdaq',          unit: '',  kind: 'level', dec: 0, group: 'idx', optional: true },
     { id: 'YH_N225',   sym: '^N225',     src: 'yahoo', label: 'Nikkei 225',      unit: '',  kind: 'level', dec: 0, group: 'idx', optional: true },

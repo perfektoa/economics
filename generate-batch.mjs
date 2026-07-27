@@ -54,13 +54,18 @@ const yoyOf = (obs) => {
     }
     return out;
 };
-// Index level twelve months before the month this question will resolve in.
-function yoyBase(obs, monthsAhead) {
+// Which month this question will actually resolve on, and the month it will be
+// compared against. Naming both in the question text removes the guesswork —
+// "the same month a year earlier" is not something a reader can resolve alone.
+function yoyMonths(obs, monthsAhead) {
     const lastD = obs[obs.length - 1].d;
-    const t = new Date(Date.UTC(+lastD.slice(0, 4), +lastD.slice(5, 7) - 1 + monthsAhead - 12, 1));
-    const key = t.toISOString().slice(0, 7);
+    const y = +lastD.slice(0, 4), m = +lastD.slice(5, 7) - 1;
+    const target = new Date(Date.UTC(y, m + monthsAhead, 1));
+    const base = new Date(Date.UTC(y, m + monthsAhead - 12, 1));
+    const name = (d) => d.toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+    const key = base.toISOString().slice(0, 7);
     const hit = obs.find(o => o.d.slice(0, 7) === key);
-    return hit ? hit.v : null;
+    return hit ? { base: hit.v, baseName: name(base), targetName: name(target) } : null;
 }
 // Round to three significant figures. Rounding by order of magnitude alone
 // turned a 117 threshold into 120 — a 3% error on a 2.5% intended move.
@@ -96,7 +101,9 @@ const THEMES = {
     // Yahoo 0 days, FRED's WTI spot 7 days, FRED's copper 56 days. A three-month
     // question resolving on two-month-old data is not a three-month question.
     'Industrial commodities': ['YH_HG', 'YH_CL'],
-    'Credit & volatility': ['BAMLH0A0HYM2', 'VIXCLS'],
+    // The high-yield spread exists only on FRED — Yahoo publishes no credit
+    // spreads, no yield curve, no mortgage rate. Those stay where they are.
+    'Credit & volatility': ['BAMLH0A0HYM2', 'YH_VIX'],
     // Case-Shiller is deliberately excluded: it runs a three-month publication
     // lag, so the base month for a year-over-year threshold cannot be pinned
     // reliably and the question could resolve wrong on a technicality.
@@ -128,8 +135,9 @@ for (const [theme, ids] of Object.entries(THEMES)) {
         const yoy = isYoY ? yoyOf(obs) : null;
         if (isYoY && (!yoy || !yoy.length)) { console.log(`  skip ${id} (cannot compute YoY)`); continue; }
         const curYoY = isYoY ? yoy[yoy.length - 1].v : null;
-        const base = isYoY ? yoyBase(obs, months) : null;
-        if (isYoY && base == null) { console.log(`  skip ${id} (no base month for YoY threshold)`); continue; }
+        const ym = isYoY ? yoyMonths(obs, months) : null;
+        if (isYoY && !ym) { console.log(`  skip ${id} (no base month for YoY threshold)`); continue; }
+        const base = ym?.base;
         const pctFmt = (v) => v.toFixed(1) + '%';
 
         const isLevel = (alt++ % 2) === 1;
@@ -138,13 +146,16 @@ for (const [theme, ids] of Object.entries(THEMES)) {
             // Threshold is expressed as a rate but stored as an index level.
             const swing = typicalMove(yoy.map(o => ({ d: o.d, v: o.v + 100 })), months * 30.44) * 100;
             const target = isLevel ? curYoY + Math.max(0.3, swing) : curYoY;
-            value = sig3(base * (1 + target / 100));
-            // Labels like "Inflation — CPI YoY" need trimming to a bare subject.
+            // NOT rounded to significant figures: at these index levels a 3-figure
+            // round shifts the implied rate by ~0.15 points, which quietly turned
+            // "above 3.46%" into "above 3.32%" and made the question easier than
+            // it claimed. The threshold is an exact derived quantity — keep it exact.
+            value = +(base * (1 + target / 100)).toFixed(2);
             const subject = label.replace(/\s*YoY.*$/, '').replace(/^.*—\s*/, '').trim();
             question = isLevel
-                ? `${subject} rises to ${pctFmt(target)} year-over-year within ${months} months`
-                : `${subject} growth is HIGHER in ${months} months than today's ${pctFmt(curYoY)} year-over-year`;
-            why = `Currently ${pctFmt(curYoY)}. Resolves on the raw index passing ${value.toFixed(1)}, which is ${pctFmt(target)} against the same month a year earlier. ${theme}.`;
+                ? `${subject} inflation is above ${pctFmt(target)} in the ${ym.targetName} report`
+                : `${subject} inflation is above today's ${pctFmt(curYoY)} in the ${ym.targetName} report`;
+            why = `Resolves on the ${ym.targetName} index, published in the middle of the following month — the last one due before the deadline. It compares against ${ym.baseName} (${base.toFixed(2)}), so the index must exceed ${value.toFixed(2)} to clear ${pctFmt(target)}. Today's reading is ${pctFmt(curYoY)}. ${theme}.`;
         } else if (!isLevel) {
             value = +now.toFixed(4);
             question = `${label} is HIGHER in ${months} months than today's ${fmt(now)}`;

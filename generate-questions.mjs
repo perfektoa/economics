@@ -148,13 +148,16 @@ if (oilNow != null) ask({
     askBy: plusDays(nextFri, -1), deadline: nextFri,
     resolve: { series: 'YH_CL', op: '>', value: +oilNow.toFixed(2), mode: 'final' },
 });
-const vixNow = latestOf('VIXCLS');
+// Yahoo's VIX, not FRED's: same index, published same-day instead of 3-4 days
+// late, so a one-week question can actually resolve within a week.
+const vixNow = latestOf('YH_VIX') ?? latestOf('VIXCLS');
+const vixSeries = latestOf('YH_VIX') != null ? 'YH_VIX' : 'VIXCLS';
 if (vixNow != null) ask({
     id: `q-vix-${nextFri}`,
     question: `VIX ends ${prettyDate(nextFri)} HIGHER than today's ${vixNow.toFixed(1)}`,
     why: `Weekly rep on fear itself. Calm weeks grind vol down; one headline spikes it.`,
     askBy: plusDays(nextFri, -1), deadline: nextFri,
-    resolve: { series: 'VIXCLS', op: '>', value: +vixNow.toFixed(2), mode: 'final' },
+    resolve: { series: vixSeries, op: '>', value: +vixNow.toFixed(2), mode: 'final' },
 });
 
 // ── 3. Indicators at historic extremes (top 2 per run, one per quarter each) ──

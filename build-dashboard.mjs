@@ -82,8 +82,10 @@ function pctile(pts) {
 // parties reject the falsification claim, and the sampling problem is the
 // better-evidenced concern. Treat single-month moves in these series as noise
 // until confirmed by a second month or by an independent series.
+// Consumer sentiment is University of Michigan, not BLS — it was wrongly
+// flagged here at first. Jobless claims are Department of Labor, also not BLS.
 const BLS_SOURCED = new Set([
-    'CPIAUCSL', 'CPILFESL', 'UNRATE', 'PAYEMS', 'CES0500000003', 'CUSR0000SEHA', 'UMCSENT',
+    'CPIAUCSL', 'CPILFESL', 'UNRATE', 'PAYEMS', 'CES0500000003', 'CUSR0000SEHA',
 ]);
 const BLS_NOTE = 'Published by the BLS. Sample sizes have been cut and response rates are falling — a swing of under 50 survey responses can move the unemployment rate by 0.1 point. Single-month moves in this series are weak evidence on their own.';
 
@@ -1047,6 +1049,14 @@ ${questions.map(f => {
     const hist = s ? s.pts.slice(-8) : [];
     const spark = hist.length > 1 ? hist.map(([m, v]) => `${m.slice(2).replace('-', '/')} ${v.toFixed(s.dec)}`).join('   ') : '';
     const gapPct = (s && f.resolve?.value) ? (s.latest / f.resolve.value - 1) * 100 : null;
+    // If a feed lags a big share of the question's horizon, the reading that
+    // decides it will be materially older than the deadline. Say so rather than
+    // let the question imply a freshness it does not have.
+    const lag = sid ? pubLag(sid) : 0;
+    const horizon = Math.max(1, Math.round((Date.parse(f.deadline) - Date.parse(f.created)) / 86400e3));
+    const lagWarn = lag > 20 && lag > horizon * 0.25
+        ? `This series publishes about ${lag} days late, so the reading that settles this will be from roughly ${new Date(Date.parse(f.deadline) - lag * 86400e3).toISOString().slice(0, 10)}, not the deadline date.`
+        : null;
     return `<div style="padding:8px 12px;border-bottom:1px solid var(--line);background:rgba(232,178,60,0.05);">
     <div><span style="color:var(--accent);font-weight:700;">ASK</span>
     <span style="color:var(--ink);"> ${esc(f.question)}?</span>
@@ -1054,7 +1064,7 @@ ${questions.map(f => {
     ${plain ? `<div style="color:var(--muted);font-size:11px;margin-top:4px;padding-left:8px;border-left:2px solid var(--line);">
         <b style="color:var(--ink);">What this is:</b> ${esc(plain[0])}<br>
         <b style="color:var(--ink);">What moves it:</b> ${esc(plain[1])}
-        ${s ? `<br><b style="color:var(--ink);">Where it stands:</b> ${s.latest.toFixed(s.dec)}${esc(s.unit)} as of ${s.asOf}${gapPct != null ? `, which is ${Math.abs(gapPct).toFixed(1)}% ${gapPct >= 0 ? 'above' : 'below'} the ${f.resolve.value} threshold` : ''} · ${ord(s.p)} percentile of its own history since ${s.since}${spark ? `<br><span style="font-family:inherit;">recent: ${esc(spark)}</span>` : ''}${s.noChart ? '' : `<br><a href="#chart-${esc(sid)}" style="color:var(--accent);">see the full chart ↓</a>`}` : ''}
+        ${s ? `<br><b style="color:var(--ink);">Where it stands:</b> ${s.latest.toFixed(s.dec)}${esc(s.unit)} as of ${s.asOf}${gapPct != null ? `, which is ${Math.abs(gapPct).toFixed(1)}% ${gapPct >= 0 ? 'above' : 'below'} the ${f.resolve.value} threshold` : ''} · ${ord(s.p)} percentile of its own history since ${s.since}${spark ? `<br><span style="font-family:inherit;">recent: ${esc(spark)}</span>` : ''}${lagWarn ? `<br><span style="color:var(--warn);">⚑ ${esc(lagWarn)}</span>` : ''}${s.noChart ? '' : `<br><a href="#chart-${esc(sid)}" style="color:var(--accent);">see the full chart ↓</a>`}` : ''}
     </div>` : ''}
     <div class="fc-q" data-id="${f.id}" style="display:none;align-items:center;gap:10px;margin-top:6px;">
         <span style="color:var(--bad);font-size:11px;">NO</span>
