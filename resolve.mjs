@@ -6,8 +6,24 @@
 // print lands, while check-forecasts stays conservative and waits a day — for
 // monthly series the deadline can arrive before the deciding print publishes,
 // and resolving eagerly would lock in a stale number.
+import { readFileSync, existsSync } from 'fs';
+
 const test = (op, a, b) => op === '>' ? a > b : op === '<' ? a < b : op === '>=' ? a >= b : a <= b;
 const DAY = 86400e3;
+
+// How far behind real time a feed runs, from the gap between its newest
+// observation and when it was fetched. Same-day for gold and the Fed target,
+// ~4 days for VIX, ~7 for FRED's WTI spot. Drives the resolution grace period.
+export function pubLag(id) {
+    const f = new URL(`./data/${id}.json`, import.meta.url);
+    if (!existsSync(f)) return 0;
+    try {
+        const j = JSON.parse(readFileSync(f, 'utf8'));
+        const obs = j.obs.filter(o => o.v != null);
+        if (!obs.length || !j.fetchedAt) return 0;
+        return Math.max(0, Math.round((Date.parse(j.fetchedAt.slice(0, 10)) - Date.parse(obs[obs.length - 1].d)) / DAY));
+    } catch (_) { return 0; }
+}
 const days = (a, b) => Math.round((Date.parse(b + 'T12:00:00Z') - Date.parse(a + 'T12:00:00Z')) / DAY);
 
 // How often does this series publish? Used to tell "the deciding print has
@@ -21,7 +37,7 @@ function medianGap(obs) {
     return gaps[Math.floor(gaps.length / 2)] || 400;
 }
 
-export function evaluateForecast(f, obs, today, { provisional = false } = {}) {
+export function evaluateForecast(f, obs, today, { pubLagDays = 0 } = {}) {
     if (!f?.resolve || !obs?.length) return null;
     const from = f.resolve.from || f.created;
     const inWindow = obs.filter(o => o.d >= from && o.d <= f.deadline);
@@ -51,7 +67,13 @@ export function evaluateForecast(f, obs, today, { provisional = false } = {}) {
     // test is whether the print is fresh relative to how often the series
     // publishes, with a long-stop so a discontinued series cannot hang forever.
     if ((f.resolve.at || 'close') === 'close') {
-        if (last.d < f.deadline && days(f.deadline, today) < 5) return null;
+        // The grace period must exceed the series' own publication lag, or a
+        // slow feed resolves on a stale price. Measured lags differ wildly:
+        // gold and the Fed target are same-day, VIX runs ~4 days behind, and
+        // FRED's WTI spot runs ~7. A flat 5-day grace would have judged a
+        // July 24 oil question on July 20's price.
+        const grace = Math.max(5, pubLagDays + 3);
+        if (last.d < f.deadline && days(f.deadline, today) < grace) return null;
     } else {
         const stale = days(last.d, f.deadline) > medianGap(obs) * 1.6;
         if (stale && days(f.deadline, today) < 30) return null;

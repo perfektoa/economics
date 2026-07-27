@@ -3,7 +3,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { SERIES } from './series.mjs';
 import { dailyBrier } from './brier.mjs';
-import { evaluateForecast, closeDateFor } from './resolve.mjs';
+import { evaluateForecast, closeDateFor, pubLag } from './resolve.mjs';
 
 const FILE = new URL('./forecasts.json', import.meta.url);
 if (!existsSync(FILE)) { console.log('no forecasts.json yet'); process.exit(0); }
@@ -33,7 +33,7 @@ for (const f of db.forecasts) {
     if (!obs) continue;
     // resolve.from overrides created for series whose obs are dated by reference
     // period (e.g. UNRATE prints dated the 1st of the prior month).
-    const ev = evaluateForecast(f, obs, today);
+    const ev = evaluateForecast(f, obs, today, { pubLagDays: pubLag(f.resolve.series) });
     const outcome = ev?.outcome ?? null, when = ev?.when ?? null;
     if (outcome != null) {
         // The retroactive close must be the day the answer became KNOWABLE, not
