@@ -70,6 +70,23 @@ function pctile(pts) {
     return Math.round(100 * below / vals.length);
 }
 
+// Series published by the Bureau of Labor Statistics. Flagged because the
+// agency's measurement capacity is documented as degraded: CPI collection was
+// dropped in three metro areas with a 15% sample cut across the other 72 (July
+// 2026), 350 PPI industry indexes were discontinued (May 2026), the October
+// 2025 household survey was lost entirely to the shutdown, and response rates
+// keep falling. At current sample sizes a swing of fewer than 50 survey
+// responses moves the headline unemployment rate by 0.1 point. Separately, the
+// BLS commissioner was fired in August 2025 after a weak jobs report the
+// president called "rigged"; career staff and former commissioners across both
+// parties reject the falsification claim, and the sampling problem is the
+// better-evidenced concern. Treat single-month moves in these series as noise
+// until confirmed by a second month or by an independent series.
+const BLS_SOURCED = new Set([
+    'CPIAUCSL', 'CPILFESL', 'UNRATE', 'PAYEMS', 'CES0500000003', 'CUSR0000SEHA', 'UMCSENT',
+]);
+const BLS_NOTE = 'Published by the BLS. Sample sizes have been cut and response rates are falling — a swing of under 50 survey responses can move the unemployment rate by 0.1 point. Single-month moves in this series are weak evidence on their own.';
+
 // Directionality: is a HIGH value good, bad, or not a moral question?
 const DIR = {
     GDPNOW: 'good', A191RL1Q225SBEA: 'good', PAYEMS: 'good', INDPRO: 'good', UMCSENT: 'good', HOUST: 'good',
@@ -779,7 +796,7 @@ const extreme = (s) => s.p != null && (s.p >= 90 || s.p <= 10);
 
 const cells = (group) => payload.series.filter(s => s.group === group).map(s => `
     <div class="cell" style="${extreme(s) ? 'box-shadow:inset 0 0 0 1px var(--warn);' : ''}" title="${esc(s.label)} — latest ${s.latest.toFixed(s.dec)}${s.unit}, 3-month change ${fmtD(s.d3, s.dec)}, 12-month change ${fmtD(s.d12, s.dec)}. ${s.p != null ? `At the ${ord(s.p)} percentile of its own history since ${s.since}.` : ''} As of ${s.asOf}.">
-        <div class="cell-label">${esc(s.label)}${s.stale ? ' <span class="stale">as of ' + s.asOf + '</span>' : ''}</div>
+        <div class="cell-label">${esc(s.label)}${BLS_SOURCED.has(s.id) ? ` <span style="color:var(--warn);cursor:help;" title="${escA(BLS_NOTE)}">⚑</span>` : ''}${s.stale ? ' <span class="stale">as of ' + s.asOf + '</span>' : ''}</div>
         <div class="cell-value" style="color:${valColor(s)};">${s.unit === '$' ? '$' : ''}${s.latest.toFixed(s.dec)}${s.unit !== '$' ? s.unit : ''}${s.p != null ? ` <span style="font-size:11px;font-weight:400;color:${extreme(s) ? 'var(--warn)' : 'var(--muted)'};">${extreme(s) ? '◆' : ''}${ord(s.p)}</span>` : ''}
             <span class="trend">${arrow(s.d3)}3m ${arrow(s.d12)}12m</span></div>
     </div>`).join('');
@@ -841,6 +858,11 @@ details summary { cursor:pointer; color:var(--muted); margin:14px 0 6px; }
 <div style="color:var(--muted);font-size:11px;margin:-4px 0 10px;">
   The small grey number beside each reading is its percentile against its own full history: 50th is typical, 90th means higher than 90% of all months on record, 10th means lower than 90% of them.
   A ◆ and a border mark the top or bottom 10%. Colour shows whether high is good or bad for that particular series.
+</div>
+<div style="background:var(--panel);border:1px solid var(--warn);border-radius:6px;padding:7px 12px;margin-bottom:10px;font-size:12px;">
+  <b style="color:var(--warn);">⚑ MEASUREMENT WARNING ON BLS SERIES</b>
+  <span style="color:var(--ink);">Inflation, unemployment, payrolls, wages and rent all come from the Bureau of Labor Statistics, whose measurement capacity is documented as degraded: CPI collection dropped in three metro areas with a 15% sample cut across the other 72 (July 2026), 350 producer-price indexes discontinued (May 2026), the October 2025 household survey lost entirely to the shutdown, and falling response rates throughout. <b>At current sample sizes a swing of fewer than 50 survey responses moves the headline unemployment rate by 0.1 point</b> — which is the size of the move most monthly commentary is built on.</span>
+  <span style="color:var(--muted);">Separately, the BLS commissioner was fired in August 2025 after a weak jobs report the president called "rigged", and the June 2026 report drew open scepticism from analysts for internal inconsistencies. Career staff and former commissioners of both parties reject the falsification claim; the sampling problem is the better-evidenced concern and the more corrosive one. Practical rule: treat a single month's move in a flagged series as noise until a second month or an independent series agrees.</span>
 </div>
 ${(() => {
     const ex = payload.series.filter(s => ['us', 'mkt', 'world'].includes(s.group) && extreme(s))
