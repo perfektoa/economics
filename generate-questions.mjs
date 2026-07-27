@@ -138,13 +138,15 @@ if (claimsNow != null && claimsAt) ask({
 // resolved the question YES while the release it actually asked about came in
 // at 187k. Single-print questions also use 'final', not 'any', so they judge
 // the new print rather than firing on anything in the window.
-const oilNow = latestOf('DCOILWTICO');
+// Crude uses the Yahoo futures series, not FRED's spot: FRED publishes WTI a
+// week late, which is longer than this question's whole horizon.
+const oilNow = latestOf('YH_CL');
 if (oilNow != null) ask({
     id: `q-oil-${nextFri}`,
     question: `WTI crude ends ${prettyDate(nextFri)} ABOVE today's $${oilNow.toFixed(0)}`,
     why: `Weekly rep on the barrel — the last daily close on or before ${prettyDate(nextFri)} decides it.`,
     askBy: plusDays(nextFri, -1), deadline: nextFri,
-    resolve: { series: 'DCOILWTICO', op: '>', value: +oilNow.toFixed(2), mode: 'final' },
+    resolve: { series: 'YH_CL', op: '>', value: +oilNow.toFixed(2), mode: 'final' },
 });
 const vixNow = latestOf('VIXCLS');
 if (vixNow != null) ask({

@@ -92,7 +92,10 @@ const THEMES = {
     'Labour market': ['UNRATE', 'ICSA'],
     'Equities': ['YH_SPX', 'YH_NDX'],
     'Precious metals': ['YH_GOLD', 'YH_SILVER'],
-    'Industrial commodities': ['PCOPPUSDM', 'DCOILWTICO'],
+    // Market prices come from Yahoo, not FRED. Measured publication lags:
+    // Yahoo 0 days, FRED's WTI spot 7 days, FRED's copper 56 days. A three-month
+    // question resolving on two-month-old data is not a three-month question.
+    'Industrial commodities': ['YH_HG', 'YH_CL'],
     'Credit & volatility': ['BAMLH0A0HYM2', 'VIXCLS'],
     // Case-Shiller is deliberately excluded: it runs a three-month publication
     // lag, so the base month for a year-over-year threshold cannot be pinned
