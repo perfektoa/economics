@@ -977,7 +977,7 @@ ${open.map(f => {
     const histTip = tl.length > 1 ? tl.map(e => `${e.on}: ${Math.round(e.p * 100)}%`).join('\n') : '';
     const pend = pendingOf(f);
     return `<div style="padding:5px 12px;border-bottom:1px solid var(--line);${pend ? 'background:rgba(232,178,60,0.06);' : ''}">
-    <span style="color:var(--accent);font-weight:700;">${Math.round(f.p * 100)}%</span>${f.claudeP != null ? `<span style="color:var(--muted);font-size:11px;${f.claudeWhy ? 'cursor:help;border-bottom:1px dotted var(--muted);' : ''}"${f.claudeWhy ? ` title="${escA(f.claudeWhy)}"` : ''}> vs Claude ${Math.round(f.claudeP * 100)}%</span>` : ''}
+    <span style="color:var(--accent);font-weight:700;">${Math.round(f.p * 100)}%</span>${f.claudeP != null ? `<span style="color:var(--muted);font-size:11px;${f.claudeWhy ? 'cursor:help;border-bottom:1px dotted var(--muted);' : ''}"${f.claudeWhy ? ` title="${escA(f.claudeWhy)}"` : ''}> vs Claude ${Math.round(f.claudeP * 100)}%</span>` : ''}${f.claudeSawUserFirst ? `<span style="color:var(--warn);font-size:11px;cursor:help;" title="Claude saw your probability before committing its own on this question, so the two numbers were not formed independently. Discount this one when comparing the records. Use blind.mjs to avoid it.">†</span>` : ''}
     <span style="color:var(--ink);"> ${esc(f.question)}</span>
     ${pend ? `<div style="margin-top:3px;">
         <span style="color:${pend.outcome ? 'var(--good)' : 'var(--bad)'};font-weight:700;">ANSWER IS IN: ${pend.outcome ? 'YES' : 'NO'}</span>
