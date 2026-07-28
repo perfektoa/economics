@@ -5,8 +5,6 @@
 // It does not recommend trades and is not investment advice.
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { SERIES } from './series.mjs';
-import { dailyBrier, averageBrier, hitRate, heldStats, timeline } from './brier.mjs';
-import { evaluateForecast, closeDateFor, pubLag, FASTER_SOURCE, settleRule } from './resolve.mjs';
 
 const DATA_DIR = new URL('./data/', import.meta.url);
 const load = (id) => {
@@ -974,188 +972,57 @@ ${deskPlays.map(([title, body], i) => `<div style="padding:6px 12px;${i < deskPl
     <div style="color:var(--ink);margin-top:2px;">${esc(body)}</div>
 </div>`).join('')}
 </div>
-${(() => {
-    let db = null;
-    try { db = JSON.parse(readFileSync(new URL('./forecasts.json', import.meta.url), 'utf8')); } catch (_) {}
-    if (!db?.forecasts?.length) return `<h2>Forecast Journal</h2>
-<div style="background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 12px;color:var(--muted);">
-The board writes its own questions — they appear before FOMC decisions and jobs reports, and whenever an indicator hits a historic extreme. Nothing pending right now.</div>`;
-    const questions = db.forecasts.filter(f => f.outcome == null && f.p == null && !f.voided);
-    const open = db.forecasts.filter(f => f.outcome == null && f.p != null && !f.voided);
-    // Disputed = resolved once, but the data no longer backs it. It stays visible
-    // (below, with its reason) but must not reach the scoreboard.
-    const done = db.forecasts.filter(f => f.outcome != null && !f.voided && !f.disputed);
-    const disputed = db.forecasts.filter(f => f.outcome != null && f.disputed && !f.voided);
-    // A forecast whose deciding print has landed but which the resolver has not
-    // formally closed yet. Its score is already fixed, so it counts on the
-    // scoreboard immediately rather than showing a dash for another day.
-    const todayISO2 = new Date().toISOString().slice(0, 10);
-    const settleOf = (f) => {
-        if (!f.resolve) return null;
-        const raw = load(f.resolve.series);
-        if (!raw) return null;
-        const scale = SERIES.find(s => s.id === f.resolve.series)?.scale || 1;
-        const altId = FASTER_SOURCE[f.resolve.series];
-        const altRaw = altId ? load(altId) : null;
-        const altScale = altId ? (SERIES.find(x => x.id === altId)?.scale || 1) : 1;
-        const ev = evaluateForecast(f, raw.map(o => ({ d: o.d, v: o.v * scale })), todayISO2, {
-            pubLagDays: pubLag(f.resolve.series),
-            altObs: altRaw ? altRaw.map(o => ({ d: o.d, v: o.v * altScale })) : null,
-        });
-        if (!ev) return null;
-        return { ...ev, sim: { ...f, outcome: ev.outcome, resolvedRef: ev.when, resolvedOn: closeDateFor(f, ev.when, todayISO2) } };
-    };
-    const pendingMap = new Map();
-    for (const f of open) { const s = settleOf(f); if (s) pendingMap.set(f.id, s); }
-    const settled = [...done, ...[...pendingMap.values()].map(s => s.sim)];
-    const nPending = pendingMap.size;
-
-    // Daily-averaged Brier (Good Judgment Project convention): scored on every
-    // day a number was held, then averaged. Being right early is what wins.
-    const you = averageBrier(settled, 'user');
-    const youHit = hitRate(settled, 'user');
-    const brier = you?.brier ?? null;
-    const cdone = settled.filter(f => f.claudeP != null);
-    const cl = averageBrier(cdone, 'claude');
-    const clHit = hitRate(cdone, 'claude');
-    const cBrier = cl?.brier ?? null;
-    const brierColor = (b) => b == null ? 'var(--muted)' : b < 0.2 ? 'var(--good)' : b < 0.28 ? 'var(--warn)' : 'var(--bad)';
-    const liveVal = (f) => {
-        if (!f.resolve) return '';
-        const s = built[f.resolve.series];
-        return s ? ` · now: ${s.latest.toFixed(s.dec)}${s.unit} vs ${f.resolve.op} ${f.resolve.value}` : '';
-    };
-    const daysLeft = (d) => Math.max(0, Math.round((Date.parse(d) - Date.now()) / 86400e3));
-    const pendingOf = (f) => {
-        const s = pendingMap.get(f.id);
-        return s ? { ...s, you: dailyBrier(s.sim, 'user'), claude: dailyBrier(s.sim, 'claude') } : null;
-    };
-    return `<h2>Forecast Journal <span style="color:var(--muted);text-transform:none;letter-spacing:0;">— the board asks, you answer, the machine scores every day you hold a number. Brier: 0 = prophet, 0.25 = coin flips at 50%.</span></h2>
-<div id="fc-filehint" style="background:var(--panel);border:1px solid var(--warn);border-radius:6px;padding:8px 12px;margin-bottom:8px;color:var(--warn);">
-You've opened the dashboard as a plain file, so the answer buttons are hidden.
-<a href="http://localhost:8787/" style="color:var(--accent);font-weight:700;">Click here to open it properly</a> — same page, but your picks can be saved.</div>
-<div style="background:var(--panel);border:1px solid var(--line);border-radius:6px;">
-<div style="display:flex;gap:18px;padding:6px 12px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums;align-items:center;">
-    ${questions.length ? `<span style="color:var(--accent);font-weight:700;">Awaiting your answer: ${questions.length}</span>` : ''}
-    <span>Resolved: <b style="color:var(--accent);">${settled.length}</b></span>
-    <span title="${you ? `Averaged over ${you.days} scored days. Scoring only your final answer would give ${you.finalOnly.toFixed(3)}.` : 'No resolved forecasts yet.'}">You: <b style="color:${brierColor(brier)};">${brier != null ? 'Brier ' + brier.toFixed(3) : '—'}</b>${youHit ? ` <span style="color:var(--muted);">(hit ${youHit.pct}%)</span>` : ''}</span>
-    ${cdone.length || open.some(f => f.claudeP != null) || questions.some(f => f.claudeP != null) ? `<span title="${cl ? `Averaged over ${cl.days} scored days.` : 'No resolved forecasts yet.'}">Claude: <b style="color:${brierColor(cBrier)};">${cBrier != null ? 'Brier ' + cBrier.toFixed(3) : '—'}</b>${clHit ? ` <span style="color:var(--muted);">(hit ${clHit.pct}%)</span>` : ''}</span>` : ''}
-    <span style="color:var(--muted);">Open: ${open.length - nPending}</span>
-    <span style="color:var(--muted);font-size:11px;" title="Good Judgment Project convention: your number is scored on every day you held it, then averaged, and it carries forward until you change it. So a call you got right early scores well on every one of those days, while a correction made two days before the deadline only improves two days. Late updates are allowed — they are just nearly worthless, which is why nothing needs locking. Superforecasters average 0.166; regular forecasters 0.259.">daily-averaged ⓘ</span>
-    <a id="fc-toggle" href="#" style="display:none;color:var(--muted);margin-left:auto;font-size:11px;">+ custom call</a>
-</div>
-${questions.map(f => {
-    // Everything needed to answer without leaving the page: what the indicator
-    // is, where it stands, what it has done lately, and how often history says
-    // the condition holds. Being stuck for lack of a reference is a UI failure.
-    const sid = f.resolve?.series;
-    // Some question series (the Fed target) are group 'meta' and never charted,
-    // so fall back to the raw cache rather than showing nothing.
-    let s = sid ? built[sid] : null;
-    if (!s && sid) {
-        const raw = load(sid);
-        if (raw?.length) {
-            const scale = SERIES.find(x => x.id === sid)?.scale || 1;
-            const pts = toMonthly(raw).map(([m, v]) => [m, v * scale]);
-            const m2 = SERIES.find(x => x.id === sid);
-            s = { id: sid, label: m2?.label || sid, unit: m2?.unit || '', dec: m2?.dec ?? 2,
-                pts, latest: pts[pts.length - 1][1], asOf: pts[pts.length - 1][0],
-                p: pctile(pts), since: pts[0][0].slice(0, 4), noChart: true };
-        }
-    }
-    const plain = sid ? PLAIN[sid] : null;
-    const hist = s ? s.pts.slice(-8) : [];
-    const spark = hist.length > 1 ? hist.map(([m, v]) => `${m.slice(2).replace('-', '/')} ${v.toFixed(s.dec)}`).join('   ') : '';
-    const gapPct = (s && f.resolve?.value) ? (s.latest / f.resolve.value - 1) * 100 : null;
-    // If a feed lags a big share of the question's horizon, the reading that
-    // decides it will be materially older than the deadline. Say so rather than
-    // let the question imply a freshness it does not have.
-    const lag = sid ? pubLag(sid) : 0;
-    const horizon = Math.max(1, Math.round((Date.parse(f.deadline) - Date.parse(f.created)) / 86400e3));
-    const lagWarn = lag > 20 && lag > horizon * 0.25
-        ? `This series publishes about ${lag} days late, so the reading that settles this will be from roughly ${new Date(Date.parse(f.deadline) - lag * 86400e3).toISOString().slice(0, 10)}, not the deadline date.`
-        : null;
-    return `<div style="padding:8px 12px;border-bottom:1px solid var(--line);background:rgba(232,178,60,0.05);">
-    <div><span style="color:var(--accent);font-weight:700;">ASK</span>
-    <span style="color:var(--ink);"> ${esc(f.question)}?</span>
-    <span style="color:var(--muted);"> — ${esc(f.why || '')} Answer by ${f.askBy || f.deadline}.</span></div>
-    <div style="margin-top:4px;padding:4px 8px;border-left:2px solid var(--accent);color:var(--ink);font-size:11px;">
-        <b>How it settles:</b> ${esc(f.rule || settleRule(f, (v) => (s ? v.toLocaleString('en-US', { minimumFractionDigits: s.dec, maximumFractionDigits: s.dec }) + s.unit : v)))}
-    </div>
-    ${plain ? `<div style="color:var(--muted);font-size:11px;margin-top:4px;padding-left:8px;border-left:2px solid var(--line);">
-        <b style="color:var(--ink);">What this is:</b> ${esc(plain[0])}<br>
-        <b style="color:var(--ink);">What moves it:</b> ${esc(plain[1])}
-        ${s ? `<br><b style="color:var(--ink);">Where it stands:</b> ${s.latest.toFixed(s.dec)}${esc(s.unit)} as of ${s.asOf}${gapPct != null ? `, which is ${Math.abs(gapPct).toFixed(1)}% ${gapPct >= 0 ? 'above' : 'below'} the ${f.resolve.value} threshold` : ''} · ${ord(s.p)} percentile of its own history since ${s.since}${spark ? `<br><span style="font-family:inherit;">recent: ${esc(spark)}</span>` : ''}${lagWarn ? `<br><span style="color:var(--warn);">⚑ ${esc(lagWarn)}</span>` : ''}${s.noChart ? '' : `<br><a href="#chart-${esc(sid)}" style="color:var(--accent);">see the full chart ↓</a>`}` : ''}
-    </div>` : ''}
-    <div class="fc-q" data-id="${f.id}" style="display:none;align-items:center;gap:10px;margin-top:6px;">
-        <span style="color:var(--bad);font-size:11px;">NO</span>
-        <input type="range" min="1" max="99" value="50" style="flex:1;max-width:260px;accent-color:var(--accent);">
-        <span style="color:var(--good);font-size:11px;">YES</span>
-        <b class="fc-qp" style="color:var(--accent);min-width:40px;font-variant-numeric:tabular-nums;">50%</b>
-        <button class="fc-lock" style="background:none;border:1px solid var(--accent);color:var(--accent);border-radius:4px;padding:2px 12px;font:inherit;font-size:12px;cursor:pointer;">Lock it in</button>
-        <button class="fc-pass" style="background:none;border:1px solid var(--line);color:var(--muted);border-radius:4px;padding:2px 10px;font:inherit;font-size:12px;cursor:pointer;">Pass</button>
-    </div>
-</div>`; }).join('')}
-${open.map(f => {
-    const todayISO = new Date().toISOString().slice(0, 10);
-    const editable = f.deadline >= todayISO;      // updates stay open; daily averaging makes late ones nearly worthless
-    const held = heldStats(f, 'user');
-    const tl = timeline(f, 'user');
-    const histTip = tl.length > 1 ? tl.map(e => `${e.on}: ${Math.round(e.p * 100)}%`).join('\n') : '';
-    const pend = pendingOf(f);
-    return `<div style="padding:5px 12px;border-bottom:1px solid var(--line);${pend ? 'background:rgba(232,178,60,0.06);' : ''}">
-    <span style="color:var(--accent);font-weight:700;">${Math.round(f.p * 100)}%</span>${f.claudeP != null ? `<span style="color:var(--muted);font-size:11px;${f.claudeWhy ? 'cursor:help;border-bottom:1px dotted var(--muted);' : ''}"${f.claudeWhy ? ` title="${escA(f.claudeWhy)}"` : ''}> vs Claude ${Math.round(f.claudeP * 100)}%</span>` : ''}${f.claudeSawUserFirst ? `<span style="color:var(--warn);font-size:11px;cursor:help;" title="Claude saw your probability before committing its own on this question, so the two numbers were not formed independently. Discount this one when comparing the records. Use blind.mjs to avoid it.">†</span>` : ''}
-    <span style="color:var(--ink);"> ${esc(f.question)}</span>
-    ${pend ? `<div style="margin-top:3px;">
-        <span style="color:${pend.outcome ? 'var(--good)' : 'var(--bad)'};font-weight:700;">ANSWER IS IN: ${pend.outcome ? 'YES' : 'NO'}</span>
-        <span style="color:var(--muted);">${pend.deciding != null ? ` (${pend.deciding.toFixed(1)} on ${pend.when})` : ''} —
-        Brier you <b style="color:${pend.you ? brierColor(pend.you.brier) : 'var(--muted)'};">${pend.you ? pend.you.brier.toFixed(3) : '—'}</b>${pend.claude ? ` · Claude <b style="color:${brierColor(pend.claude.brier)};">${pend.claude.brier.toFixed(3)}</b>` : ''}</span>
-    </div>` : ''}
-    <span style="color:var(--muted);"> — by ${f.deadline} (${daysLeft(f.deadline)}d left)${esc(liveVal(f))}${f.resolve ? '' : ' · manual'}</span>
-    ${held ? `<span style="color:var(--muted);font-size:11px;${histTip ? 'cursor:help;border-bottom:1px dotted var(--muted);' : ''}"${histTip ? ` title="${escA(histTip)}"` : ''}> · held ${held.days}d${held.updates ? `, revised ${held.updates}x` : ''}</span>` : ''}
-    <div style="color:var(--muted);font-size:11px;margin-top:2px;"><b style="color:var(--ink);">Settles:</b> ${esc(f.rule || settleRule(f))}</div>
-    <span class="fc-ctl" data-id="${f.id}" data-manual="${f.resolve ? 0 : 1}" style="float:right;display:none;gap:6px;"></span>
-    ${editable ? `<div class="fc-edit" data-id="${f.id}" style="display:none;align-items:center;gap:10px;margin-top:6px;">
-        <span style="color:var(--bad);font-size:11px;">NO</span>
-        <input type="range" min="1" max="99" value="${Math.round(f.p * 100)}" style="flex:1;max-width:260px;accent-color:var(--accent);">
-        <span style="color:var(--good);font-size:11px;">YES</span>
-        <b class="fc-qp" style="color:var(--accent);min-width:40px;font-variant-numeric:tabular-nums;">${Math.round(f.p * 100)}%</b>
-        <button class="fc-save" style="background:none;border:1px solid var(--accent);color:var(--accent);border-radius:4px;padding:2px 12px;font:inherit;font-size:12px;cursor:pointer;">Save</button>
-        <button class="fc-cancel" style="background:none;border:1px solid var(--line);color:var(--muted);border-radius:4px;padding:2px 10px;font:inherit;font-size:12px;cursor:pointer;">Cancel</button>
-        <span style="color:var(--muted);font-size:11px;">update any time — only the days ahead are affected</span>
-    </div>` : ''}
-</div>`; }).join('')}
-<div id="fc-form" style="display:none;padding:8px 12px;border-bottom:1px solid var(--line);flex-wrap:wrap;gap:6px;align-items:center;">
-    <input id="fq" placeholder="Falsifiable question…" style="flex:1;min-width:220px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:inherit;">
-    <input id="fp" type="number" min="1" max="99" placeholder="%" style="width:56px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:4px;font:inherit;">
-    <input id="fd" type="date" style="background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:3px;font:inherit;">
-    <select id="fs" style="background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:4px;font:inherit;">
-        <option value="">manual resolve</option>
-        ${payload.series.filter(s => !s.id.endsWith('_R') && s.id !== 'ANALOG').map(s => `<option value="${s.id}">${esc(s.label)}</option>`).join('')}
-    </select>
-    <select id="fo" style="background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:4px;font:inherit;"><option>&gt;</option><option>&lt;</option></select>
-    <input id="fv" type="number" step="any" placeholder="value" style="width:80px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:4px;font:inherit;">
-    <select id="fm" style="background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:4px;font:inherit;"><option value="any">any print</option><option value="final">at deadline</option></select>
-    <button id="fadd" style="background:var(--panel2,#232013);color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:4px 12px;font:inherit;cursor:pointer;">Log it</button>
-</div>
-${done.slice(-8).reverse().map(f => {
-    const yb = dailyBrier(f, 'user'), cb = dailyBrier(f, 'claude');
-    const pc = (p) => Math.round(p * 100) + '%';
-    const path = yb ? (yb.updates ? `${pc(yb.first)} → ${pc(yb.last)}` : pc(yb.first)) : '—';
-    const revTip = yb && yb.updates
-        ? `You revised ${yb.updates}x. Holding your first ${pc(yb.first)} for the whole window would have scored ${yb.firstOnly.toFixed(3)}; scoring only your final answer would give ${yb.finalOnly.toFixed(3)}.`
-        : yb ? `Held ${pc(yb.first)} for all ${yb.days} scored days.` : '';
-    return `<div style="padding:5px 12px;border-bottom:1px solid var(--line);">
-    <span style="color:${f.outcome ? 'var(--good)' : 'var(--bad)'};font-weight:700;">${f.outcome ? 'YES' : 'NO'}</span>
-    <span style="color:var(--muted);cursor:help;" title="${escA(revTip)}"> (you ${path}${cb ? ` · Claude ${pc(cb.first)}` : ''})</span>
-    <span style="color:var(--ink);"> ${esc(f.question)}</span>
-    <span style="color:var(--muted);"> — Brier you ${yb ? yb.brier.toFixed(3) : '—'}${cb ? ` · Claude ${cb.brier.toFixed(3)}` : ''} over ${yb ? yb.days : '?'} days, resolved ${f.resolvedOn}</span>
-</div>`; }).join('')}
-</div>`;
-})()}
 <h2>US Economy</h2><div class="cells">${cells('us')}</div>
 ${payload.series.some(s => s.group === 'ineq') ? `<h2>Wealth &amp; Inequality <span style="color:var(--muted);text-transform:none;letter-spacing:0;">— the slow structural dials: who holds the wealth shapes how every fast indicator behaves</span></h2>
 <div class="cells">${cells('ineq')}</div>` : ''}
+${(() => {
+    // Where the federal budget actually goes, by share, across sixty years.
+    // Shares rather than dollars because dollars grow with everything else and
+    // hide the only thing worth seeing: defense went from about half the budget
+    // to about an eighth while health went from nearly nothing to the largest
+    // single line. Prisons are shown federal + state/local together because over
+    // 90% of that money is state and local — the federal line on its own reads
+    // as a rounding error and gives exactly the wrong impression.
+    const FN = [
+        ['G160461A027NBEA', 'Defense'], ['G160661A027NBEA', 'Health'],
+        ['G160721A027NBEA', 'Income security'], ['G160681A027NBEA', 'Education'],
+        ['G160481A027NBEA', 'Police'], ['G160511A027NBEA', 'Prisons'],
+    ];
+    const yearMap = (id) => { const o = load(id); if (!o) return null;
+        return new Map(o.filter(x => x.v != null).map(x => [x.d.slice(0, 4), x.v])); };
+    const tot = yearMap('AFEXPND'), gdpA = yearMap('GDPA');
+    if (!tot) return '';
+    const fn = FN.map(([id, label]) => [label, yearMap(id)]).filter(([, m]) => m);
+    if (fn.length < 4) return '';
+    const slPris = yearMap('G160881A027NBEA'), fedPris = yearMap('G160511A027NBEA');
+    // The total runs a year ahead of the by-function detail, so the newest row
+    // must be the last year BOTH have — otherwise it renders as a row of dashes.
+    const newest = [...tot.keys()].filter(y => fn.every(([, m]) => m.has(y))).sort().pop();
+    const years = ['1959', '1970', '1980', '1990', '2000', '2010', '2020']
+        .concat([newest]).filter((y, i, a) => y && tot.has(y) && a.indexOf(y) === i);
+    if (years.length < 4) return '';
+    const pct = (v, t) => v == null || !t ? '—' : (v / t * 100).toFixed(1) + '%';
+    const rows = years.map(y => {
+        const t = tot.get(y);
+        return `<tr><td style="text-align:left;color:var(--accent);font-weight:700;">${y}</td>
+        <td>$${(t / 1000).toFixed(1)}T</td>
+        ${fn.map(([, m]) => `<td>${pct(m.get(y), t)}</td>`).join('')}</tr>`;
+    }).join('');
+    // Prisons as a share of the whole economy, both levels of government — the
+    // only honest way to show it, since the money sits in state budgets.
+    const prisonRow = (slPris && gdpA) ? years.map(y => {
+        const s = slPris.get(y), f = fedPris?.get(y) ?? 0, g = gdpA.get(y);
+        return (s == null || !g) ? null : `${y} ${((s + f) / g * 100).toFixed(2)}%`;
+    }).filter(Boolean).join(' · ') : '';
+    return `<h2>Where Federal Money Goes <span style="color:var(--muted);text-transform:none;letter-spacing:0;">— share of federal spending by function, BEA, back to 1959</span></h2>
+<div class="tablewrap" style="border:1px solid var(--line);border-radius:6px;background:var(--panel);overflow-x:auto;">
+<table><thead><tr><th>Year</th><th>Total</th>${fn.map(([l]) => `<th>${esc(l)}</th>`).join('')}</tr></thead>
+<tbody>${rows}</tbody></table>
+<div style="padding:5px 10px;font-size:11px;color:var(--muted);">
+Read the columns down, not across. The long move is defense shrinking from roughly half the budget to about an eighth while health grew from almost nothing to the largest single line — sixty years of steady reallocation, not one event. Income security (Social Security, unemployment, welfare) has sat near a third since 1980 and barely moved.
+${prisonRow ? `<br><b style="color:var(--ink);">Prisons, federal + state and local, as a share of GDP:</b> ${esc(prisonRow)}. Over 90% of prison money is state and local, so the federal column above understates it by roughly ten times. Prison spending relative to the economy roughly quintupled from 1959 to its 2010 peak, then eased.` : ''}
+</div></div>`;
+})()}
 ${(() => {
     // Housing affordability has two separate costs and they moved opposite ways:
     // the monthly payment (paid out of income) and the down payment (paid out of
@@ -1364,71 +1231,6 @@ function paintBuilt() {
 paintBuilt();
 setInterval(paintBuilt, 60000);
 
-// Forecast Journal controls — active only when served by server.mjs (http),
-// hidden when the page is opened as a plain file.
-if (location.protocol.startsWith('http')) {
-    const hint = document.getElementById('fc-filehint');
-    if (hint) hint.style.display = 'none';
-    const api = (url, body) => fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-        .then(r => r.json()).then(j => { if (j.error) alert(j.error); else location.reload(); });
-    // Question rows: slider + lock in / pass
-    document.querySelectorAll('.fc-q').forEach(el => {
-        el.style.display = 'flex';
-        const id = el.dataset.id;
-        const slider = el.querySelector('input[type=range]');
-        const lab = el.querySelector('.fc-qp');
-        slider.addEventListener('input', () => lab.textContent = slider.value + '%');
-        el.querySelector('.fc-lock').addEventListener('click', () => api('/api/forecast/answer', { id, p: +slider.value }));
-        el.querySelector('.fc-pass').addEventListener('click', () => api('/api/forecast/delete', { id }));
-    });
-    // Custom-call form stays tucked behind a toggle
-    const form = document.getElementById('fc-form');
-    const toggle = document.getElementById('fc-toggle');
-    if (toggle && form) {
-        toggle.style.display = 'inline';
-        toggle.addEventListener('click', (ev) => {
-            ev.preventDefault();
-            form.style.display = form.style.display === 'flex' ? 'none' : 'flex';
-        });
-    }
-    document.getElementById('fadd')?.addEventListener('click', () => {
-        const q = document.getElementById('fq').value.trim();
-        const p = +document.getElementById('fp').value;
-        const d = document.getElementById('fd').value;
-        if (!q || !p || !d) { alert('Need a question, a probability, and a deadline.'); return; }
-        const series = document.getElementById('fs').value;
-        api('/api/forecast', { question: q, p, deadline: d,
-            series: series || undefined, op: document.getElementById('fo').value,
-            value: +document.getElementById('fv').value || undefined, mode: document.getElementById('fm').value });
-    });
-    // Revise-your-pick rows (open, still inside the answer window)
-    document.querySelectorAll('.fc-edit').forEach(el => {
-        const id = el.dataset.id;
-        const slider = el.querySelector('input[type=range]');
-        const lab = el.querySelector('.fc-qp');
-        slider.addEventListener('input', () => lab.textContent = slider.value + '%');
-        el.querySelector('.fc-save').addEventListener('click', () => api('/api/forecast/answer', { id, p: +slider.value }));
-        el.querySelector('.fc-cancel').addEventListener('click', () => el.style.display = 'none');
-    });
-    document.querySelectorAll('.fc-ctl').forEach(el => {
-        el.style.display = 'inline-flex';
-        const id = el.dataset.id;
-        const btn = (label, fn, color) => {
-            const b = document.createElement('button');
-            b.textContent = label;
-            b.style.cssText = 'background:none;border:1px solid ' + color + ';color:' + color + ';border-radius:4px;padding:0 8px;font:inherit;font-size:11px;cursor:pointer;';
-            b.addEventListener('click', fn);
-            el.appendChild(b);
-        };
-        if (el.dataset.manual === '1') {
-            btn('YES', () => api('/api/forecast/resolve', { id, outcome: 1 }), 'var(--good)');
-            btn('NO', () => api('/api/forecast/resolve', { id, outcome: 0 }), 'var(--bad)');
-        }
-        const editEl = el.parentElement.querySelector('.fc-edit');
-        if (editEl) btn('Edit', () => { editEl.style.display = editEl.style.display === 'flex' ? 'none' : 'flex'; }, 'var(--accent)');
-        btn('✕', () => { if (confirm('Delete this forecast? (Deleting misses defeats the whole point — only remove true mistakes.)')) api('/api/forecast/delete', { id }); }, 'var(--muted)');
-    });
-}
 const DATA = ${JSON.stringify(payload)};
 const CHART = '#4489c8', ACCENT = '#e8b23c', BAND = 'rgba(157,150,131,0.14)', GRID = '#2a2820', MUTED = '#9d9683';
 let rangeMonths = 0;

@@ -68,7 +68,6 @@ and a startup entry that keeps the server alive.
 - `series.mjs` — the indicator registry; add or remove series here
 - `fetch-data.mjs` / `fetch-debt.mjs` / `fetch-calendar.mjs` / `fetch-news.mjs`
 - `build-dashboard.mjs` — builds `dashboard.html`, including the desk-note rules
-- `generate-questions.mjs` / `check-forecasts.mjs` — the forecast journal
 - `server.mjs` — localhost-only server so the journal buttons can save
 - `test-render.mjs` — headless chart smoke test; run after editing the builder
 - `lessons.md` — forecasting rulebook, graded results, and engine bugs caught

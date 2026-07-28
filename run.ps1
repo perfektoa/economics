@@ -8,12 +8,10 @@ if ($Force) { node fetch-data.mjs --force } else { node fetch-data.mjs }
 if (-not $?) { Write-Host "fetch had errors - building with cached data anyway" -ForegroundColor Yellow }
 node fetch-calendar.mjs
 node fetch-debt.mjs
-node check-forecasts.mjs
-node generate-questions.mjs
 node build-dashboard.mjs
 if ($?) { node check-alerts.mjs }
 node check-trump.mjs
-# Always make sure the dashboard server is alive (journal buttons need it) —
+# Always make sure the dashboard server is alive —
 # this runs on the hourly task too, so a crashed/rebooted server self-heals.
 $srv = $false
 try { $r = Invoke-WebRequest -Uri "http://localhost:8787/" -Method Head -TimeoutSec 2 -UseBasicParsing; $srv = $true } catch {}

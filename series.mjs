@@ -116,6 +116,21 @@ export const SERIES = [
     { id: 'COE',           label: 'Compensation of Employees',        unit: '$', kind: 'level', dec: 0, group: 'meta', optional: true },
     { id: 'FGNETWQ027S',   label: 'Federal Govt Net Worth',           unit: '$', kind: 'level', dec: 0, group: 'meta', optional: true },
     { id: 'SLGTPAQ027S',   label: 'State & Local Govt Net Worth',     unit: '$', kind: 'level', dec: 0, group: 'meta', optional: true },
+    // ── Where the money actually goes (BEA by function, annual back to 1959) ──
+    // These answer "what share of the budget is defense vs health vs prisons",
+    // which no single headline series carries. Prisons and police are split
+    // federal / state-local on purpose: over 90% of prison spending is state and
+    // local, so the federal line alone makes it look like a rounding error.
+    { id: 'AFEXPND',         label: 'Federal Spending (total)',      unit: '$', kind: 'level', dec: 0, group: 'meta', optional: true },
+    { id: 'G160461A027NBEA', label: 'Federal: Defense',              unit: '$', kind: 'level', dec: 0, group: 'meta', optional: true },
+    { id: 'G160661A027NBEA', label: 'Federal: Health',               unit: '$', kind: 'level', dec: 0, group: 'meta', optional: true },
+    { id: 'G160721A027NBEA', label: 'Federal: Income Security',      unit: '$', kind: 'level', dec: 0, group: 'meta', optional: true },
+    { id: 'G160681A027NBEA', label: 'Federal: Education',            unit: '$', kind: 'level', dec: 0, group: 'meta', optional: true },
+    { id: 'G160481A027NBEA', label: 'Federal: Police',               unit: '$', kind: 'level', dec: 0, group: 'meta', optional: true },
+    { id: 'G160511A027NBEA', label: 'Federal: Prisons',              unit: '$', kind: 'level', dec: 0, group: 'meta', optional: true },
+    { id: 'G160881A027NBEA', label: 'State & Local: Prisons',        unit: '$', kind: 'level', dec: 0, group: 'meta', optional: true },
+    { id: 'G160841A027NBEA', label: 'State & Local: Public Order',   unit: '$', kind: 'level', dec: 0, group: 'meta', optional: true },
+    { id: 'GDPA',            label: 'Nominal GDP (annual)',          unit: '$', kind: 'level', dec: 0, group: 'meta', optional: true },
     // ── Sovereign debt (US structure; world levels come from debt.json/IMF) ──
     { id: 'GFDEGDQ188S', label: 'US Federal Debt / GDP',        unit: '%', kind: 'level', dec: 1, group: 'debt', optional: true },
     { id: 'FYOIGDA188S', label: 'US Interest Cost / GDP',       unit: '%', kind: 'level', dec: 2, group: 'debt', optional: true },
