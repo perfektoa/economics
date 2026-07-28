@@ -105,6 +105,26 @@ export function evaluateForecast(f, obs, today, { pubLagDays = 0, altObs = null 
     return { outcome: test(f.resolve.op, last.v, f.resolve.value) ? 1 : 0, when: last.d, deciding: last.v };
 }
 
+// Plain-English statement of how a question settles, derived from the same
+// `resolve` block the resolver reads — so the text on screen cannot drift from
+// the behaviour. This exists because "VIX falls to 14.9 WITHIN 3 months"
+// (any crossing) sat in a batch beside "S&P 500 is higher IN 3 months" (closing
+// reading only), and the entire difference in meaning was one preposition. A
+// forecast answered under the wrong rule is not a forecast, so the rule now gets
+// its own line rather than living inside the phrasing.
+export function settleRule(f, fmt = (v) => String(v)) {
+    if (!f?.resolve) return 'Resolved by hand.';
+    const { op, value, mode } = f.resolve;
+    const dir = op === '>' || op === '>=' ? 'above' : 'below';
+    if ((mode || 'any') === 'any') {
+        return `Settles YES the first time it reads ${dir} ${fmt(value)}. One reading anywhere in the window is enough, and where it ends up on ${f.deadline} does not matter. Settles NO only if it never gets there.`;
+    }
+    const what = (f.resolve.at || 'close') === 'release'
+        ? `the last figure published on or before ${f.deadline}`
+        : `the ${f.deadline} closing reading`;
+    return `Settles on ${what} and nothing else. What it does in between does not count — it can cross ${fmt(value)} repeatedly and still settle NO.`;
+}
+
 // The close date used for scoring: for a scheduled release the deadline IS the
 // publication day, so it must not drift to whenever the checker happened to run.
 export const closeDateFor = (f, when, today) =>

@@ -41,7 +41,10 @@ export function timeline(f, who = 'user') {
 // the question entirely. The last number held going INTO the release is the
 // one that gets scored, carried forward through the close.
 export function dailyBrier(f, who = 'user') {
-    if (f.outcome == null) return null;
+    // A voided question was withdrawn (bad wording, bad rule) and a disputed one
+    // no longer agrees with its own data. Neither is evidence about forecasting
+    // skill, so neither is allowed anywhere near the score.
+    if (f.outcome == null || f.voided || f.disputed) return null;
     const end = toDay(f.resolvedOn || f.deadline);
     const tl = timeline(f, who).filter(e => e.on < end);
     if (!tl.length) return null;
@@ -81,7 +84,7 @@ export function averageBrier(list, who = 'user') {
 // before any updating.
 export function hitRate(list, who = 'user') {
     const rows = list.map(f => ({ f, tl: timeline(f, who).filter(e => e.on < toDay(f.resolvedOn || f.deadline)) }))
-        .filter(x => x.tl.length && x.f.outcome != null);
+        .filter(x => x.tl.length && x.f.outcome != null && !x.f.voided && !x.f.disputed);
     if (!rows.length) return null;
     const hits = rows.filter(({ f, tl }) => (tl[0].p >= 0.5) === (f.outcome === 1)).length;
     return { hits, n: rows.length, pct: Math.round(100 * hits / rows.length) };

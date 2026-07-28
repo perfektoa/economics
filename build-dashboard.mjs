@@ -6,7 +6,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { SERIES } from './series.mjs';
 import { dailyBrier, averageBrier, hitRate, heldStats, timeline } from './brier.mjs';
-import { evaluateForecast, closeDateFor, pubLag, FASTER_SOURCE } from './resolve.mjs';
+import { evaluateForecast, closeDateFor, pubLag, FASTER_SOURCE, settleRule } from './resolve.mjs';
 
 const DATA_DIR = new URL('./data/', import.meta.url);
 const load = (id) => {
@@ -971,9 +971,12 @@ ${(() => {
     if (!db?.forecasts?.length) return `<h2>Forecast Journal</h2>
 <div style="background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 12px;color:var(--muted);">
 The board writes its own questions — they appear before FOMC decisions and jobs reports, and whenever an indicator hits a historic extreme. Nothing pending right now.</div>`;
-    const questions = db.forecasts.filter(f => f.outcome == null && f.p == null);
-    const open = db.forecasts.filter(f => f.outcome == null && f.p != null);
-    const done = db.forecasts.filter(f => f.outcome != null);
+    const questions = db.forecasts.filter(f => f.outcome == null && f.p == null && !f.voided);
+    const open = db.forecasts.filter(f => f.outcome == null && f.p != null && !f.voided);
+    // Disputed = resolved once, but the data no longer backs it. It stays visible
+    // (below, with its reason) but must not reach the scoreboard.
+    const done = db.forecasts.filter(f => f.outcome != null && !f.voided && !f.disputed);
+    const disputed = db.forecasts.filter(f => f.outcome != null && f.disputed && !f.voided);
     // A forecast whose deciding print has landed but which the resolver has not
     // formally closed yet. Its score is already fixed, so it counts on the
     // scoreboard immediately rather than showing a dash for another day.
@@ -1067,6 +1070,9 @@ ${questions.map(f => {
     <div><span style="color:var(--accent);font-weight:700;">ASK</span>
     <span style="color:var(--ink);"> ${esc(f.question)}?</span>
     <span style="color:var(--muted);"> — ${esc(f.why || '')} Answer by ${f.askBy || f.deadline}.</span></div>
+    <div style="margin-top:4px;padding:4px 8px;border-left:2px solid var(--accent);color:var(--ink);font-size:11px;">
+        <b>How it settles:</b> ${esc(f.rule || settleRule(f, (v) => (s ? v.toLocaleString('en-US', { minimumFractionDigits: s.dec, maximumFractionDigits: s.dec }) + s.unit : v)))}
+    </div>
     ${plain ? `<div style="color:var(--muted);font-size:11px;margin-top:4px;padding-left:8px;border-left:2px solid var(--line);">
         <b style="color:var(--ink);">What this is:</b> ${esc(plain[0])}<br>
         <b style="color:var(--ink);">What moves it:</b> ${esc(plain[1])}
@@ -1098,6 +1104,7 @@ ${open.map(f => {
     </div>` : ''}
     <span style="color:var(--muted);"> — by ${f.deadline} (${daysLeft(f.deadline)}d left)${esc(liveVal(f))}${f.resolve ? '' : ' · manual'}</span>
     ${held ? `<span style="color:var(--muted);font-size:11px;${histTip ? 'cursor:help;border-bottom:1px dotted var(--muted);' : ''}"${histTip ? ` title="${escA(histTip)}"` : ''}> · held ${held.days}d${held.updates ? `, revised ${held.updates}x` : ''}</span>` : ''}
+    <div style="color:var(--muted);font-size:11px;margin-top:2px;"><b style="color:var(--ink);">Settles:</b> ${esc(f.rule || settleRule(f))}</div>
     <span class="fc-ctl" data-id="${f.id}" data-manual="${f.resolve ? 0 : 1}" style="float:right;display:none;gap:6px;"></span>
     ${editable ? `<div class="fc-edit" data-id="${f.id}" style="display:none;align-items:center;gap:10px;margin-top:6px;">
         <span style="color:var(--bad);font-size:11px;">NO</span>

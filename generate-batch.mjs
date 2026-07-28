@@ -141,7 +141,7 @@ for (const [theme, ids] of Object.entries(THEMES)) {
         const pctFmt = (v) => v.toFixed(1) + '%';
 
         const isLevel = (alt++ % 2) === 1;
-        let value, question, why;
+        let value, question, why, rule;
         if (isYoY) {
             // Threshold is expressed as a rate but stored as an index level.
             const swing = typicalMove(yoy.map(o => ({ d: o.d, v: o.v + 100 })), months * 30.44) * 100;
@@ -156,22 +156,25 @@ for (const [theme, ids] of Object.entries(THEMES)) {
                 ? `${subject} inflation is above ${pctFmt(target)} in the ${ym.targetName} report`
                 : `${subject} inflation is above today's ${pctFmt(curYoY)} in the ${ym.targetName} report`;
             why = `Resolves on the ${ym.targetName} index, published in the middle of the following month — the last one due before the deadline. It compares against ${ym.baseName} (${base.toFixed(2)}), so the index must exceed ${value.toFixed(2)} to clear ${pctFmt(target)}. Today's reading is ${pctFmt(curYoY)}. ${theme}.`;
+            rule = `Settles on the ${ym.targetName} report and nothing else. Readings before then do not count, however high or low they go.`;
         } else if (!isLevel) {
             value = +now.toFixed(4);
-            question = `${label} is HIGHER in ${months} months than today's ${fmt(now)}`;
+            question = `${label} is higher on ${deadline} than today's ${fmt(now)}`;
             why = `Direction call, near a coin flip by construction. ${theme}.`;
+            rule = `Settles on the ${deadline} reading and nothing else. What it does in between does not count — it can cross ${fmt(now)} twenty times and still settle NO.`;
         } else {
             const move = typicalMove(obs, months * 30.44);
             const up = alt % 4 === 1;                       // alternate up-breaks and down-breaks
             value = sig3(now * (1 + (up ? 1 : -1) * move * 1.15));
-            question = `${label} ${up ? 'reaches' : 'falls to'} ${fmt(value)} within ${months} months`;
+            question = `${label} ${up ? 'rises above' : 'drops below'} ${fmt(value)} at any point before ${deadline}`;
             why = `A ${(Math.abs(value / now - 1) * 100).toFixed(0)}% move from today's ${fmt(now)} — roughly the median ${months}-month swing for this series, so genuinely uncertain rather than a gimme. ${theme}.`;
+            rule = `Settles YES the first time it reads ${up ? 'above' : 'below'} ${fmt(value)}. One reading anywhere in the window is enough, and where it sits on ${deadline} does not matter.`;
         }
 
         const qid = `q3m-${id}-${deadline}`;
         if (have.has(qid)) continue;
         const q = {
-            id: qid, question, why, theme,
+            id: qid, question, why, rule, theme,
             p: null, created: today, askBy: plusDays(today, 21), deadline,
             resolve: {
                 series: id,

@@ -26,7 +26,32 @@ async function notify(title, body) {
     }).catch(() => {});
 }
 
+// A resolved answer is not allowed to just sit there trusted. One question was
+// written YES against data that, on the next fetch, said it had never happened —
+// and nothing in the pipeline noticed, because resolved questions were skipped
+// forever after. So every auto-resolved question is re-checked against current
+// data, and any that no longer agrees is flagged loudly rather than quietly
+// scoring. Disagreement is not always a bug (a series can be revised, and the
+// faster-feed fallback legitimately reads a source this pass does not), so this
+// reports rather than silently rewrites — the call is the user's.
 let changed = false;
+let disputed = 0;
+for (const f of db.forecasts) {
+    if (f.outcome == null || !f.auto || !f.resolve || f.settledBy || f.voided) continue;
+    const obs = seriesObs(f.resolve.series);
+    if (!obs) continue;
+    const ev = evaluateForecast(f, obs, today, { pubLagDays: pubLag(f.resolve.series) });
+    if (ev && ev.outcome === f.outcome) continue;
+    disputed++;
+    f.disputed = `Stored ${f.outcome ? 'YES' : 'NO'}, but re-checking against the ${f.resolve.series} data on ${today} says ${ev ? (ev.outcome ? 'YES' : 'NO') : 'not resolved yet'}. Not counted until this is settled.`;
+    console.error(`DISPUTED ${f.id}: ${f.disputed}`);
+    changed = true;
+}
+if (disputed) {
+    await notify(`${disputed} resolved forecast${disputed === 1 ? '' : 's'} no longer match the data`,
+        `A question marked resolved does not agree with its series any more. It is held out of scoring until checked. See the dashboard.`);
+}
+
 for (const f of db.forecasts) {
     if (f.outcome != null || f.p == null || !f.resolve) continue;
     const obs = seriesObs(f.resolve.series);
