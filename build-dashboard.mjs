@@ -575,7 +575,16 @@ if (months.length > 120) {
         return [m, Math.sqrt(d / dim)];
     });
     const med = [...dists.map(x => x[1])].sort((a, b) => a - b)[Math.floor(dists.length / 2)] || 1;
-    analog.pts = dists.map(([m, d]) => [m, Math.max(0, 100 * Math.exp(-0.693 * d / med))]); // median month scores 50
+    // Median month scores 50. The trailing two years are dropped for the same
+    // reason the table below drops them: this measures distance from the LATEST
+    // month, so that month scores exactly 100 against itself and its neighbours
+    // score near it — every single build, forever. Left in, the curve ends on a
+    // permanent all-time high and reads as "conditions have never matched today
+    // more closely," which is not a finding, it is the definition. What is left
+    // is the only part that carries information: how today compares to a past
+    // far enough away to be a genuine comparison.
+    analog.pts = dists.filter(([m]) => monthsBetween(m, todayM) > 24)
+        .map(([m, d]) => [m, Math.max(0, 100 * Math.exp(-0.693 * d / med))]);
     // top analogs: exclude the last 24 months, keep picks >=18 months apart
     const cand = dists.filter(([m]) => monthsBetween(m, todayM) > 24).sort((a, b) => a[1] - b[1]);
     for (const [m, d] of cand) {
@@ -1321,14 +1330,14 @@ ${analog.top.map(t => `<tr>
   <td style="color:${t.rec ? 'var(--bad)' : 'var(--good)'};font-weight:700;">${t.rec ? 'YES' : 'no'}</td>
 </tr>`).join('')}
 </tbody></table>
-<div style="padding:5px 10px;font-size:11px;color:var(--muted);">Match = similarity across 11 normalized indicators (inflation, Fed level+direction, unemployment level+trend, curve, industrial production, payrolls, M2, mortgage rates). The first chart below plots this score across all of history — peaks are the eras that rhyme with now. Five analogs is a tiny sample: read them as "what kind of thing has happened from here," never "what will happen."</div>
+<div style="padding:5px 10px;font-size:11px;color:var(--muted);">Match = similarity across 11 normalized indicators (inflation, Fed level+direction, unemployment level+trend, curve, industrial production, payrolls, M2, mortgage rates). The first chart below plots this score across history — peaks are the eras that rhyme with now. It stops two years short of today on purpose: the score measures distance from the latest month, so recent months score near 100 against themselves and would end the line on a meaningless all-time high. Five analogs is a tiny sample: read them as "what kind of thing has happened from here," never "what will happen."</div>
 </div>` : ''}
 <h2 style="display:flex;align-items:center;">History <span style="color:var(--muted);text-transform:none;letter-spacing:0;margin-left:8px;">gray bands = US recessions</span>
   <span class="range"><button data-r="120">10y</button><button data-r="300">25y</button><button data-r="0" class="on">Max</button></span></h2>
 <div class="charts" id="charts"></div>
 <details><summary>Data table (latest values)</summary>
 <table><thead><tr><th>Series</th><th>Latest</th><th>3m Δ</th><th>12m Δ</th><th>As of</th><th>FRED id</th></tr></thead><tbody>
-${payload.series.map(s => `<tr><td>${esc(s.label)}</td><td>${s.latest.toFixed(s.dec)}${esc(s.unit)}</td><td>${fmtD(s.d3, s.dec)}</td><td>${fmtD(s.d12, s.dec)}</td><td>${s.asOf}</td><td>${s.id}</td></tr>`).join('')}
+${payload.series.filter(s => s.id !== 'ANALOG').map(s => `<tr><td>${esc(s.label)}</td><td>${s.latest.toFixed(s.dec)}${esc(s.unit)}</td><td>${fmtD(s.d3, s.dec)}</td><td>${fmtD(s.d12, s.dec)}</td><td>${s.asOf}</td><td>${s.id}</td></tr>`).join('')}
 </tbody></table></details>
 <h2>Historical Tendencies <span style="color:var(--muted);text-transform:none;letter-spacing:0;">— base rates, not laws, not advice</span></h2>
 <div class="rules">${RULES.map(([t, b]) => `<div class="rule"><b>${esc(t)}</b><p>${esc(b)}</p></div>`).join('')}</div>
