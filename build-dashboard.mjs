@@ -91,6 +91,8 @@ const BLS_NOTE = 'Published by the BLS. Sample sizes have been cut and response 
 // way. Shown on forecast questions so answering one does not require already
 // knowing the jargon.
 const PLAIN = {
+    MARGINGDP: ['Money people have borrowed from their brokers to buy stocks, measured against the size of the whole economy. FINRA publishes the debt monthly; dividing by GDP makes different eras comparable.',
+        'It rises when investors borrow more to chase a rising market, and falls when they get margin calls and are forced to sell. That forced selling is the point: this is the one kind of debt that MUST unwind when prices fall, so a high reading means any decline gets amplified. Prior peaks: 2.8% at the 2000 top, 2.6% in 2007, 3.8% in 2021 — each within months of a major market top. The growth rate matters more than the level: both 2000 and 2021 topped within months of the year-over-year growth running above 50%.'],
     T10Y2Y: ['The gap between what the government pays to borrow for 10 years and for 2 years, in percentage points.',
         'Normally lending for longer earns more, so the gap is positive. It NARROWS when short rates rise or long rates fall, and WIDENS when the Fed cuts (which pulls the 2-year down) or when investors demand more for long-term inflation risk. Below zero is "inverted", which has preceded every US recession since the 1970s.'],
     DFEDTARU: ['The top of the Fed\'s target range for overnight lending between banks — the rate everything else is priced off.',
@@ -142,12 +144,15 @@ const DIR = {
     SIPOVGINIUSA: 'bad', WEALTHGAP: 'bad', GFDEGDQ188S: 'bad', FYOIGDA188S: 'bad',
     WFRBSTP1300: 'bad', WFRBST01122: 'bad', A006RE1Q156NBEA: 'good', WEALTHGDP: 'bad',
     RENTWAGE: 'bad', BETA: 'bad', CAPSHARE: 'bad', PUBWEALTH: 'good',
+    MARGINGDP: 'bad',
 };
 
 // Historical tendencies at extremes — study prompts with base rates, not signals.
 // playHigh/playLow: how investors have historically positioned at these levels.
 // Hypothetical educational framing, NOT recommendations.
 const EXTREME_NOTES = {
+    MARGINGDP: { high: 'Borrowed money in brokerage accounts is at a record share of the economy — above the 2.8% of 2000, the 2.6% of 2007 and the 3.8% of 2021, each of which came within months of a major top. This debt is secured by the stocks themselves, so a falling market forces selling, which forces more falling. It measures fragility, not timing: the level was already at records a year before this reading.', low: 'Stock-market leverage is low relative to the economy — declines have less forced selling behind them.',
+        playHigh: 'Historically: high margin-debt eras rewarded reducing leverage INTO strength rather than after the break — when the unwind comes, everything liquid gets sold at once, including the good positions. The unwind itself (debt falling 20%+ from its peak) has historically marked the late innings of the decline, not the start.', playLow: 'Historically: low-leverage markets fell more slowly in drawdowns; margin debt rebuilding from a trough accompanied durable early-cycle rallies.' },
     T10Y2Y: { low: 'Deep inversion has preceded every recession since the late 70s (6-24mo lead) — and the recession usually arrived around UN-inversion, not inversion.', high: 'A steep curve is early-cycle: historically among the better environments for risk assets and banks.',
         playLow: 'Historically: not an equity sell signal by itself (markets often rallied post-inversion); duration longs start accumulating; the de-risk trigger is UN-inversion + claims turning up.', playHigh: 'Historically: early-cycle longs — banks, small caps, cyclicals — historically did best from steep-curve starts.' },
     VIXCLS: { high: 'VIX spikes above the 90th percentile historically clustered near panic LOWS in stocks, not tops — fear peaks late.', low: 'Multi-year VIX lows = complacency; forward returns from here were historically mediocre.',
@@ -637,6 +642,15 @@ const payload = {
         ...Object.values(built).filter(s => s.group === 'real'),
     ],
 };
+// Margin-debt chart carries the three prior cycle peaks as vertical marks, so
+// the current reading is always seen against what the same level preceded.
+if (built['MARGINGDP']) {
+    built['MARGINGDP'].marks = [
+        { m: '2000-03', t: '2.8%' },
+        { m: '2007-07', t: '2.6%' },
+        { m: '2021-10', t: '3.8%' },
+    ];
+}
 if (analog.pts.length) {
     payload.series.unshift({
         id: 'ANALOG', label: 'Similarity to today (100 = identical conditions)', unit: '', dec: 0, group: 'analogx',
@@ -1264,6 +1278,13 @@ function render() {
         const step = Math.max(1, Math.ceil((y1e - y0) / 6 / 5) * 5);
         for (let yr = Math.ceil(y0 / step) * step; yr <= y1e; yr += step) {
             svg += '<text x="' + X(yr * 12 + 1) + '" y="' + (H - 5) + '" fill="' + MUTED + '" font-size="9" text-anchor="middle">' + yr + '</text>';
+        }
+        // Named vertical marks (e.g. prior cycle peaks on the margin-debt chart)
+        for (const mk of s.marks || []) {
+            const mx = ymNum(mk.m);
+            if (mx < x0 || mx > x1) continue;
+            svg += '<line x1="' + X(mx) + '" x2="' + X(mx) + '" y1="' + T + '" y2="' + (H - B) + '" stroke="' + ACCENT + '" stroke-width="1" stroke-dasharray="3,3" opacity="0.7"/>' +
+                   '<text x="' + X(mx) + '" y="' + (T + 8) + '" fill="' + ACCENT + '" font-size="8" text-anchor="middle">' + mk.t + '</text>';
         }
         svg += '<path d="M' + pts.map(p => X(ymNum(p[0])).toFixed(1) + ' ' + Y(p[1]).toFixed(1)).join('L') + '" fill="none" stroke="' + CHART + '" stroke-width="2"/>';
         const lx = X(ymNum(pts[pts.length - 1][0])), ly = Y(pts[pts.length - 1][1]);

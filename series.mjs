@@ -116,6 +116,11 @@ export const SERIES = [
     { id: 'COE',           label: 'Compensation of Employees',        unit: '$', kind: 'level', dec: 0, group: 'meta', optional: true },
     { id: 'FGNETWQ027S',   label: 'Federal Govt Net Worth',           unit: '$', kind: 'level', dec: 0, group: 'meta', optional: true },
     { id: 'SLGTPAQ027S',   label: 'State & Local Govt Net Worth',     unit: '$', kind: 'level', dec: 0, group: 'meta', optional: true },
+    // ── Margin debt (FINRA xlsx via fetch-margin.mjs, not FRED — src 'local') ──
+    // MARGINGDP is the tracked form: raw margin debt hits a "record" almost every
+    // year just because prices grow; dividing by GDP is what makes eras comparable.
+    { id: 'MARGINGDP',  label: 'Margin Debt / GDP (FINRA)', unit: '%', kind: 'level', dec: 2, group: 'idx',  src: 'local', optional: true },
+    { id: 'MARGINDEBT', label: 'Margin Debt (FINRA)',       unit: '$', kind: 'level', dec: 0, group: 'meta', src: 'local', optional: true },
     // ── Where the money actually goes (BEA by function, annual back to 1959) ──
     // These answer "what share of the budget is defense vs health vs prisons",
     // which no single headline series carries. Prisons and police are split

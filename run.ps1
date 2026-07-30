@@ -8,6 +8,7 @@ if ($Force) { node fetch-data.mjs --force } else { node fetch-data.mjs }
 if (-not $?) { Write-Host "fetch had errors - building with cached data anyway" -ForegroundColor Yellow }
 node fetch-calendar.mjs
 node fetch-debt.mjs
+node fetch-margin.mjs
 node build-dashboard.mjs
 if ($?) { node check-alerts.mjs }
 node check-trump.mjs

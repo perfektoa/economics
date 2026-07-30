@@ -68,6 +68,7 @@ async function fetchSeries(id) {
 
 let ok = 0, skipped = 0, cached = 0;
 for (const s of SERIES) {
+    if (s.src === 'local') continue;   // produced by another fetcher (e.g. fetch-margin.mjs)
     const file = new URL(`./${s.id}.json`, DATA_DIR);
     if (!force && existsSync(file) && (Date.now() - statSync(file).mtimeMs) < cacheMsFor(s)) {
         cached++; continue;
