@@ -33,16 +33,24 @@ async function fetchYahoo(sym, wantDaily) {
     // also get two years of DAILY closes spliced onto the end.
     const r = await yfInstance.chart(sym, { period1: '1950-01-01', interval: '1mo' });
     if (!r || !Array.isArray(r.quotes)) throw new Error('no quotes');
+    // Date bars in EXCHANGE-LOCAL time, not UTC. Yahoo stamps a monthly bar at
+    // local midnight of the month's first day: for Tokyo that is 15:00 UTC the
+    // PREVIOUS day, so a plain toISOString() labels Japan's March bar "Feb 28"
+    // and every Asian bar lands one month early. London flips at daylight
+    // saving, which produced two "March" rows for the FTSE. The meta gmtoffset
+    // is the exchange's own UTC offset — adding it recovers the local date.
+    const tz = (r.meta?.gmtoffset || 0) * 1000;
+    const localDay = (dt) => new Date(new Date(dt).getTime() + tz).toISOString().slice(0, 10);
     let out = r.quotes
         .filter(q => q && isFinite(q.close))
-        .map(q => ({ d: new Date(q.date).toISOString().slice(0, 10), v: q.close }));
+        .map(q => ({ d: localDay(q.date), v: q.close }));
     if (wantDaily) {
         const from = new Date(Date.now() - 730 * 86400e3).toISOString().slice(0, 10);
         try {
             const d = await yfInstance.chart(sym, { period1: from, interval: '1d' });
             const daily = (d?.quotes || [])
                 .filter(q => q && isFinite(q.close))
-                .map(q => ({ d: new Date(q.date).toISOString().slice(0, 10), v: q.close }));
+                .map(q => ({ d: localDay(q.date), v: q.close }));
             if (daily.length > 30) {
                 const cut = daily[0].d;
                 out = [...out.filter(o => o.d < cut), ...daily];
