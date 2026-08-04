@@ -59,7 +59,27 @@ async function fetchYahoo(sym, wantDaily) {
     }
     // Dedupe by date, last wins, then sort.
     const m = new Map(out.map(o => [o.d, o.v]));
-    return [...m.entries()].map(([d, v]) => ({ d, v })).sort((a, b) => a.d.localeCompare(b.d));
+    out = [...m.entries()].map(([d, v]) => ({ d, v })).sort((a, b) => a.d.localeCompare(b.d));
+    // Impossible-value guard. Yahoo sometimes returns a 0 or garbage close for a
+    // foreign-exchange holiday or partial bar; zero is finite, so the isFinite
+    // filter kept it, and a chart once drew an index dropping to literally 0 and
+    // back. No price series here can be 0 or negative, and no real market moves
+    // 80%+ against BOTH neighbours in one bar — such a point is a feed error,
+    // never news. Rule (the user's): a chart showing an impossible value means
+    // the data was picked up wrong. Drop the point and say so out loud.
+    const before = out.length;
+    out = out.filter(o => o.v > 0);
+    out = out.filter((o, i) => {
+        const prev = out[i - 1]?.v, next = out[i + 1]?.v;
+        if (prev == null || next == null) return true;
+        const spike = (o.v < 0.2 * Math.min(prev, next)) || (o.v > 5 * Math.max(prev, next));
+        if (spike) console.log(`WARN    ${sym.padEnd(12)} dropped impossible bar ${o.d}=${o.v} (neighbours ${prev.toFixed(2)} / ${next.toFixed(2)})`);
+        return !spike;
+    });
+    if (before !== out.length && out.length && before - out.length > 2) {
+        console.log(`WARN    ${sym.padEnd(12)} removed ${before - out.length} bad bars this fetch — check the feed`);
+    }
+    return out;
 }
 
 async function fetchSeries(id) {
