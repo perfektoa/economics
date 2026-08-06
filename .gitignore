@@ -15,3 +15,16 @@ top-list.json
 snapshot.json
 alerts-state.json
 trump-seen.json
+
+# personal notes & the stock-valuation layer — local only, never public
+lessons.md
+notes.json
+fts-list.json
+forecasts.json
+build-screener.mjs
+fetch-screener.mjs
+fetch-fts.mjs
+fetch-news.mjs
+screener.ps1
+silent-screener.vbs
+wealth-taxes.md
