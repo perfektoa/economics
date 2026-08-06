@@ -116,6 +116,26 @@ export const SERIES = [
     { id: 'COE',           label: 'Compensation of Employees',        unit: '$', kind: 'level', dec: 0, group: 'meta', optional: true },
     { id: 'FGNETWQ027S',   label: 'Federal Govt Net Worth',           unit: '$', kind: 'level', dec: 0, group: 'meta', optional: true },
     { id: 'SLGTPAQ027S',   label: 'State & Local Govt Net Worth',     unit: '$', kind: 'level', dec: 0, group: 'meta', optional: true },
+    // ── Euro-area distributional wealth (ECB DWA via fetch-intl.mjs) ──────────
+    // Same measures as the Fed's WFRB* series above, from the euro area's own
+    // central bank, quarterly since 2011. ECB publishes nothing finer than the
+    // top 5%, so there is no top-1% mirror of the US chart.
+    { id: 'DWA_EA_T10', label: 'Top 10% Wealth Share — Euro Area',   unit: '%', kind: 'level', dec: 1, group: 'ineqw', src: 'local', optional: true },
+    { id: 'DWA_EA_B50', label: 'Bottom 50% Wealth Share — Euro Area', unit: '%', kind: 'level', dec: 1, group: 'ineqw', src: 'local', optional: true },
+    { id: 'DWA_DE_T10', label: 'Top 10% Wealth Share — Germany',     unit: '%', kind: 'level', dec: 1, group: 'ineqw', src: 'local', optional: true },
+    { id: 'DWA_DE_B50', label: 'Bottom 50% Wealth Share — Germany',  unit: '%', kind: 'level', dec: 1, group: 'ineqw', src: 'local', optional: true },
+    { id: 'DWA_FR_T10', label: 'Top 10% Wealth Share — France',      unit: '%', kind: 'level', dec: 1, group: 'ineqw', src: 'local', optional: true },
+    { id: 'DWA_FR_B50', label: 'Bottom 50% Wealth Share — France',   unit: '%', kind: 'level', dec: 1, group: 'ineqw', src: 'local', optional: true },
+    { id: 'DWA_IT_T10', label: 'Top 10% Wealth Share — Italy',       unit: '%', kind: 'level', dec: 1, group: 'ineqw', src: 'local', optional: true },
+    { id: 'DWA_IT_B50', label: 'Bottom 50% Wealth Share — Italy',    unit: '%', kind: 'level', dec: 1, group: 'ineqw', src: 'local', optional: true },
+    { id: 'DWA_ES_T10', label: 'Top 10% Wealth Share — Spain',       unit: '%', kind: 'level', dec: 1, group: 'ineqw', src: 'local', optional: true },
+    { id: 'DWA_ES_B50', label: 'Bottom 50% Wealth Share — Spain',    unit: '%', kind: 'level', dec: 1, group: 'ineqw', src: 'local', optional: true },
+    { id: 'DWA_NL_T10', label: 'Top 10% Wealth Share — Netherlands', unit: '%', kind: 'level', dec: 1, group: 'ineqw', src: 'local', optional: true },
+    { id: 'DWA_NL_B50', label: 'Bottom 50% Wealth Share — Netherlands', unit: '%', kind: 'level', dec: 1, group: 'ineqw', src: 'local', optional: true },
+    { id: 'DWA_DE_MED', label: 'Median Household Wealth — Germany',  unit: 'k€', kind: 'level', dec: 0, group: 'ineqw', src: 'local', optional: true },
+    { id: 'DWA_FR_MED', label: 'Median Household Wealth — France',   unit: 'k€', kind: 'level', dec: 0, group: 'ineqw', src: 'local', optional: true },
+    { id: 'DWA_IT_MED', label: 'Median Household Wealth — Italy',    unit: 'k€', kind: 'level', dec: 0, group: 'ineqw', src: 'local', optional: true },
+    { id: 'DWA_ES_MED', label: 'Median Household Wealth — Spain',    unit: 'k€', kind: 'level', dec: 0, group: 'ineqw', src: 'local', optional: true },
     // ── Margin debt (FINRA xlsx via fetch-margin.mjs, not FRED — src 'local') ──
     // MARGINGDP is the tracked form: raw margin debt hits a "record" almost every
     // year just because prices grow; dividing by GDP is what makes eras comparable.

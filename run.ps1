@@ -10,6 +10,7 @@ node fetch-calendar.mjs
 node fetch-debt.mjs
 node fetch-margin.mjs
 node fetch-compare.mjs
+node fetch-intl.mjs
 node build-dashboard.mjs
 if ($?) { node check-alerts.mjs }
 node check-trump.mjs
