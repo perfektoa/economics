@@ -112,8 +112,37 @@ for (const [key, ds, dims] of ES) {
     await new Promise(res => setTimeout(res, 300));
 }
 
+// ── OECD wealth shares via DBnomics: the Piketty-preferred measure ──────────
+// Top 1% / top 10% / bottom 40% shares of household wealth. This is the
+// international counterpart of the Fed's WFRB* series the US section uses, so
+// the dashboard can finally say how the US concentration compares rather than
+// only how it compares with its own past.
+const OECD_SHARES = { top1Wealth: 'SH_TOP1', top10Wealth: 'SH_TOP10', bottom40Wealth: 'SH_BOT40' };
+const oecd = {};
+for (const [key, measure] of Object.entries(OECD_SHARES)) {
+    try {
+        const url = `https://api.db.nomics.world/v22/series/OECD/DSD_WEALTH@DF_WEALTH?dimensions=${encodeURIComponent(JSON.stringify({ MEASURE: [measure] }))}&observations=1&limit=60`;
+        const r = await fetch(url);
+        if (!r.ok) { console.error(`compare: OECD ${measure} HTTP ${r.status}`); continue; }
+        const j = await r.json();
+        for (const s of (j.series?.docs || [])) {
+            const iso = s.series_code.split('.')[0];
+            const per = s.period || [], val = s.value || [];
+            // Latest non-null observation; countries report in different years.
+            for (let i = val.length - 1; i >= 0; i--) {
+                if (val[i] == null) continue;
+                const c = (oecd[iso] ||= { iso, name: (s.series_name || '').split(' – ')[0] });
+                c[key] = +val[i]; c[key + 'Year'] = per[i];
+                break;
+            }
+        }
+    } catch (e) { console.error(`compare: OECD ${measure} ${e.message}`); }
+    await new Promise(res => setTimeout(res, 300));
+}
+
 const out = {
     fetchedAt: new Date().toISOString(),
+    oecdWealth: Object.values(oecd),
     worldBank: Object.values(wb).filter(c => Object.keys(c).length > 3),
     eurostat: Object.values(eu).filter(c => c.homeownership != null || c.incomeGini != null || c.wealthGini != null),
 };

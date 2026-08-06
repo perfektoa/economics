@@ -987,8 +987,40 @@ ${deskPlays.map(([title, body], i) => `<div style="padding:6px 12px;${i < deskPl
 </div>`).join('')}
 </div>
 <h2>US Economy</h2><div class="cells">${cells('us')}</div>
-${payload.series.some(s => s.group === 'ineq') ? `<h2>Wealth &amp; Inequality <span style="color:var(--muted);text-transform:none;letter-spacing:0;">— the slow structural dials: who holds the wealth shapes how every fast indicator behaves</span></h2>
+${payload.series.some(s => s.group === 'ineq') ? `<h2>Wealth &amp; Inequality — United States <span style="color:var(--muted);text-transform:none;letter-spacing:0;">— the slow structural dials: who holds the wealth shapes how every fast indicator behaves. All US data (Federal Reserve / BEA); international comparison below.</span></h2>
 <div class="cells">${cells('ineq')}</div>` : ''}
+${(() => {
+    // International counterpart to the US-only cells above. Uses the OECD wealth
+    // shares — top 1% / top 10% / bottom 40% — because those are the measure
+    // Piketty argues for and the direct analogue of the Fed's WFRB* series,
+    // rather than a Gini that would compress the same information into one
+    // number and hide which end of the distribution moved.
+    let cmp = null;
+    try { cmp = JSON.parse(readFileSync(new URL('./compare.json', import.meta.url), 'utf8')); } catch (_) {}
+    const rows = (cmp?.oecdWealth || []).filter(c => c.top1Wealth != null).sort((a, b) => b.top1Wealth - a.top1Wealth);
+    if (rows.length < 5) return '';
+    const usRank = rows.findIndex(c => c.iso === 'USA') + 1;
+    const us = rows.find(c => c.iso === 'USA');
+    const top10Rank = [...rows].filter(c => c.top10Wealth != null).sort((a, b) => b.top10Wealth - a.top10Wealth).findIndex(c => c.iso === 'USA') + 1;
+    const tr = (c, i) => {
+        const isUS = c.iso === 'USA';
+        return `<tr${isUS ? ' style="background:rgba(232,178,60,0.12);font-weight:700;"' : ''}>
+        <td style="text-align:right;color:var(--muted);">${i + 1}</td>
+        <td style="text-align:left;${isUS ? 'color:var(--accent);' : ''}">${esc(c.name || c.iso)}</td>
+        <td>${c.top1Wealth.toFixed(1)}%</td>
+        <td>${c.top10Wealth != null ? c.top10Wealth.toFixed(1) + '%' : '—'}</td>
+        <td style="color:${c.bottom40Wealth != null && c.bottom40Wealth < 2 ? 'var(--bad)' : 'inherit'};">${c.bottom40Wealth != null ? c.bottom40Wealth.toFixed(1) + '%' : '—'}</td>
+        <td style="color:var(--muted);">${c.top1WealthYear || ''}</td></tr>`;
+    };
+    return `<h3 style="margin:14px 0 6px;font-size:13px;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);">Wealth concentration, international — ${rows.length} OECD countries</h3>
+<div class="tablewrap" style="border:1px solid var(--line);border-radius:6px;background:var(--panel);overflow-x:auto;">
+<table><thead><tr><th>#</th><th style="text-align:left;">Country</th><th>Top 1%</th><th>Top 10%</th><th>Bottom 40%</th><th>Year</th></tr></thead>
+<tbody>${rows.map(tr).join('')}</tbody></table>
+<div style="padding:6px 10px;font-size:11px;color:var(--muted);">
+Share of all household wealth held by each group. These are Piketty's preferred measure rather than a Gini, because they say WHICH end of the distribution moved — a single index cannot. ${us ? `The United States ranks <b style="color:var(--accent);">${usRank} of ${rows.length}</b> on the top 1% share at ${us.top1Wealth.toFixed(1)}%, and <b style="color:var(--accent);">${top10Rank === 1 ? 'first' : '#' + top10Rank}</b> on the top 10% share at ${us.top10Wealth.toFixed(1)}% — the highest in the OECD. Its bottom 40% hold ${us.bottom40Wealth.toFixed(1)}% of national wealth.` : ''}
+A negative bottom-40% figure means that group owes more than it owns in aggregate; Denmark and the Netherlands show this because large mortgage debt is counted against modest measured assets, which inflates their apparent concentration. Years differ by country because each reports on its own survey cycle.
+</div></div>`;
+})()}
 ${(() => {
     // Assumptions worth checking: pairs of country-level indicators where the
     // relationship most people assume is not the one in the data. Each pair

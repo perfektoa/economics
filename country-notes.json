@@ -83,6 +83,24 @@
       "text": "Southern Africa and parts of Latin America hold the widest income gaps ever measured, with South Africa above 60. These are legacies of apartheid and colonial land settlement rather than of recent economic policy, and they are why the global GDP-versus-inequality correlation is weak: several middle-income countries are far more unequal than any poor country, so the line through the scatter is doing very little work.",
       "source": "World Bank SI.POV.GINI",
       "_note": "World Bank records key on iso3, Eurostat on iso2 — list both so a note matches whichever source the panel reads."
+    },
+    {
+      "iso2": [
+        "DNK",
+        "NLD",
+        "NOR",
+        "DK",
+        "NL",
+        "NO"
+      ],
+      "keys": [
+        "top1Wealth",
+        "bottom40Wealth",
+        "wealthGini"
+      ],
+      "label": "Nordic mortgage debt distorts the comparison",
+      "text": "Denmark, the Netherlands and Norway show a NEGATIVE bottom-40% wealth share, meaning that group owes more than it owns on paper. This is not destitution — it is very high mortgage borrowing against houses, in countries with strong safety nets where households borrow freely and hold few precautionary assets. Denmark ranking above the United States on top-1% share is largely this artefact. When comparing wealth concentration internationally, check the bottom-40% figure first: a negative one means the ranking is being driven by household debt rather than by the top pulling away.",
+      "source": "OECD Wealth Distribution Database via DBnomics"
     }
   ]
 }
