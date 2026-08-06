@@ -40,9 +40,25 @@ try {
 } catch (e) {
     console.error('FAIL: script threw:', e.message); fails++;
 }
-const cards = hosts.charts._cards || [];
-console.log(`charts rendered: ${cards.length}, svg elements: ${svgs.length}`);
-if (cards.length < 10) { console.error('FAIL: fewer than 10 charts'); fails++; }
+// Charts live one level down now: #charts holds a heading + a .charts grid per
+// section, and the cards hang off the grids. Counting only direct children of
+// #charts would report the number of SECTIONS and pass while every chart was
+// missing, so walk the tree and count actual cards.
+const countCards = (el, depth = 0) => {
+    if (!el || depth > 4) return 0;
+    const kids = el._cards || el.children || [];
+    let n = 0;
+    for (const c of kids) n += (c.className === 'card' ? 1 : 0) + countCards(c, depth + 1);
+    return n;
+};
+const cards = countCards(hosts.charts);
+const sections = (hosts.charts._cards || []).filter(c => c.tag === 'h3').length;
+console.log(`charts rendered: ${cards} in ${sections} sections, svg elements: ${svgs.length}`);
+if (cards < 10) { console.error('FAIL: fewer than 10 charts'); fails++; }
+if (sections < 5) { console.error(`FAIL: only ${sections} chart sections`); fails++; }
+if (hosts['chart-nav'] && !/href="#sec-/.test(hosts['chart-nav']._inner || '')) {
+    console.error('FAIL: section nav links missing'); fails++;
+}
 for (const s of svgs) {
     if (/NaN|Infinity/.test(s._inner)) {
         console.error('FAIL: NaN/Infinity in svg markup:', s._inner.slice(0, 160)); fails++; break;

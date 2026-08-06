@@ -1215,7 +1215,8 @@ ${analog.top.map(t => `<tr>
 </div>` : ''}
 <h2 style="display:flex;align-items:center;">History <span style="color:var(--muted);text-transform:none;letter-spacing:0;margin-left:8px;">gray bands = US recessions</span>
   <span class="range"><button data-r="120">10y</button><button data-r="300">25y</button><button data-r="0" class="on">Max</button></span></h2>
-<div class="charts" id="charts"></div>
+<div id="chart-nav" style="padding:6px 10px;margin-bottom:8px;background:var(--panel);border:1px solid var(--line);border-radius:6px;font-size:12px;line-height:1.9;"></div>
+<div id="charts"></div>
 <details><summary>Data table (latest values)</summary>
 <table><thead><tr><th>Series</th><th>Latest</th><th>3m Δ</th><th>12m Δ</th><th>As of</th><th>FRED id</th></tr></thead><tbody>
 ${payload.series.filter(s => s.id !== 'ANALOG').map(s => `<tr><td>${esc(s.label)}</td><td>${s.latest.toFixed(s.dec)}${esc(s.unit)}</td><td>${fmtD(s.d3, s.dec)}</td><td>${fmtD(s.d12, s.dec)}</td><td>${s.asOf}</td><td>${s.id}</td></tr>`).join('')}
@@ -1249,10 +1250,51 @@ const DATA = ${JSON.stringify(payload)};
 const CHART = '#4489c8', ACCENT = '#e8b23c', BAND = 'rgba(157,150,131,0.14)', GRID = '#2a2820', MUTED = '#9d9683';
 let rangeMonths = 0;
 const ymNum = (m) => (+m.slice(0, 4)) * 12 + (+m.slice(5, 7));
+// Chart sections, in reading order: what the economy is doing, then who owns the
+// result, then where money is priced, then the rest of the world. Anything whose
+// group is not listed falls into "Other" rather than vanishing.
+const CHART_SECTIONS = [
+    ['analogx', 'Historical Similarity'],
+    ['us', 'US Economy'],
+    ['ineq', 'Wealth & Inequality'],
+    ['debt', 'Sovereign Debt'],
+    ['mkt', 'Commodities & Dollar'],
+    ['real', 'Commodities, Inflation-Adjusted'],
+    ['idx', 'Stock Indices'],
+    ['sector', 'Sectors'],
+    ['industry', 'Industries'],
+    ['fx', 'Currencies'],
+    ['world', 'World'],
+];
 function render() {
     const host = document.getElementById('charts');
     host.innerHTML = '';
-    for (const s of DATA.series) {
+    const nav = document.getElementById('chart-nav');
+    const known = new Set(CHART_SECTIONS.map(s => s[0]));
+    const order = [...CHART_SECTIONS, ['__other', 'Other']];
+    const bucket = new Map(order.map(([k]) => [k, []]));
+    for (const s of DATA.series) bucket.get(known.has(s.group) ? s.group : '__other').push(s);
+    const links = [];
+    for (const [key, title] of order) {
+        const list = bucket.get(key).filter(s => (rangeMonths ? s.pts.slice(-rangeMonths) : s.pts).length >= 2);
+        if (!list.length) continue;
+        const anchor = 'sec-' + key;
+        links.push('<a href="#' + anchor + '" style="color:var(--accent);text-decoration:none;margin-right:14px;">' + title +
+                   ' <span style="color:var(--muted);">' + list.length + '</span></a>');
+        const h = document.createElement('h3');
+        h.id = anchor;
+        h.style.cssText = 'margin:18px 0 6px;font-size:13px;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--line);padding-bottom:4px;';
+        h.textContent = title;
+        host.appendChild(h);
+        const grid = document.createElement('div');
+        grid.className = 'charts';
+        host.appendChild(grid);
+        renderInto(grid, list);
+    }
+    if (nav) nav.innerHTML = links.join('');
+}
+function renderInto(host, series) {
+    for (const s of series) {
         const pts = rangeMonths ? s.pts.slice(-rangeMonths) : s.pts;
         if (pts.length < 2) continue;
         const W = 520, H = 130, L = 44, R = 10, T = 8, B = 18;
