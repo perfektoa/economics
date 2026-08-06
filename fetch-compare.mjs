@@ -68,7 +68,15 @@ const ES_BASE = 'https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/
 const ES = [
     ['homeownership', 'ilc_lvho02', { rskpovth: 'TOTAL', hhcomp: 'TOTAL', tenure: 'OWN', unit: 'PC' }],
     ['ownOutright', 'ilc_lvho02', { rskpovth: 'TOTAL', hhcomp: 'TOTAL', tenure: 'OWN_NL', unit: 'PC' }],
-    ['gini', 'ilc_di12', {}],
+    // INCOME gini. Kept distinct from wealth gini below on purpose: correlating
+    // homeownership against this one says "no relationship", against wealth it
+    // says the opposite, and conflating the two is how that mistake gets made.
+    ['incomeGini', 'ilc_di12', {}],
+    // NET WEALTH gini (experimental series, 2010/2015/2020). This is the measure
+    // the housing literature actually uses — housing is the middle class's main
+    // asset while the top holds diversified financial portfolios, so ownership
+    // spreads the main wealth asset without touching anyone's income.
+    ['wealthGini', 'icw_sr_05', { stk_flow: 'WLTH_NET', unit: 'INX' }],
     ['housingCostOverburden', 'ilc_lvho07a', { rskpovth: 'TOTAL', age: 'TOTAL', sex: 'T', unit: 'PC' }],
 ];
 const eu = {};
@@ -107,9 +115,9 @@ for (const [key, ds, dims] of ES) {
 const out = {
     fetchedAt: new Date().toISOString(),
     worldBank: Object.values(wb).filter(c => Object.keys(c).length > 3),
-    eurostat: Object.values(eu).filter(c => c.homeownership != null || c.gini != null),
+    eurostat: Object.values(eu).filter(c => c.homeownership != null || c.incomeGini != null || c.wealthGini != null),
 };
 writeFileSync(OUT, JSON.stringify(out));
 const wbFull = out.worldBank.filter(c => c.gini != null && c.gdpPerCapita != null).length;
-const euFull = out.eurostat.filter(c => c.homeownership != null && c.gini != null).length;
-console.log(`compare: ${out.worldBank.length} World Bank countries (${wbFull} with gini+gdp), ${out.eurostat.length} Eurostat countries (${euFull} with ownership+gini)`);
+const euFull = out.eurostat.filter(c => c.homeownership != null && c.wealthGini != null).length;
+console.log(`compare: ${out.worldBank.length} World Bank countries (${wbFull} with gini+gdp), ${out.eurostat.length} Eurostat countries (${euFull} with ownership+wealthGini)`);

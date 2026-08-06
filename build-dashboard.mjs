@@ -1007,14 +1007,16 @@ ${(() => {
         return { r: n / Math.sqrt(da * db), n: p.length, pts: p };
     };
     const PAIRS = [
-        { src: 'eurostat', x: 'homeownership', y: 'gini',
-          xl: 'Homeownership rate (%)', yl: 'Inequality (Gini)',
+        { src: 'eurostat', x: 'homeownership', y: 'wealthGini',
+          xl: 'Homeownership rate (%)', yl: 'WEALTH inequality (Gini)',
           assume: 'A nation of homeowners is a more equal nation — owning property is how ordinary families build wealth.',
-          scope: 'EU countries, Eurostat' },
-        { src: 'eurostat', x: 'ownOutright', y: 'gini',
-          xl: 'Own outright, no mortgage (%)', yl: 'Inequality (Gini)',
-          assume: 'Where more people own their home free and clear, wealth should be more evenly spread.',
-          scope: 'EU countries, Eurostat' },
+          scope: 'EU countries, Eurostat',
+          note: 'This one holds. Housing is the main asset of the middle class, while the wealthiest hold diversified financial portfolios — so widespread ownership spreads the single biggest asset further down the distribution. Germany is the clearest case IN FAVOUR, not against: lowest homeownership in Europe at 47%, and the HIGHEST wealth inequality at 72.' },
+        { src: 'eurostat', x: 'homeownership', y: 'incomeGini',
+          xl: 'Homeownership rate (%)', yl: 'INCOME inequality (Gini)',
+          assume: 'Same belief, measured against income instead of wealth.',
+          scope: 'EU countries, Eurostat',
+          note: 'Same question, same countries, opposite answer — because "inequality" is two different things. Owning a home changes what you OWN, not what you EARN, so it moves the wealth measure and leaves the income measure alone. Quote whichever number suits the argument and you can prove either case. The two measures only correlate 0.36 with each other.' },
         { src: 'worldBank', x: 'gdpPerCapita', y: 'gini',
           xl: 'GDP per capita ($)', yl: 'Inequality (Gini)',
           assume: 'Rich countries are more equal — growth lifts everyone.',
@@ -1073,7 +1075,7 @@ ${(() => {
         <text x="${L - 4}" y="${T + 8}" fill="var(--muted)" font-size="8" text-anchor="end">${y1.toFixed(0)}</text>
         <text x="${L - 4}" y="${H - B}" fill="var(--muted)" font-size="8" text-anchor="end">${y0.toFixed(0)}</text>
     </svg>
-    <div style="color:var(--muted);font-size:11px;">${esc(p.xl)} (across) vs ${esc(p.yl)} (up).${c.pts.some(r => r.iso === 'USA') ? ' Amber dot = United States.' : ' EU only — the US is not in this dataset.'}${richNote}</div>
+    <div style="color:var(--muted);font-size:11px;">${esc(p.xl)} (across) vs ${esc(p.yl)} (up).${c.pts.some(r => r.iso === 'USA') ? ' Amber dot = United States.' : ' EU only — the US is not in this dataset.'}${richNote}${p.note ? ' ' + esc(p.note) : ''}</div>
 </div>`;
     }).filter(Boolean).join('');
     if (!cards) return '';
