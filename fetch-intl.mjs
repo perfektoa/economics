@@ -60,3 +60,45 @@ for (const [grp, unit] of MEASURES) {
     await new Promise(res => setTimeout(res, 300));
 }
 console.log(`intl: wrote ${written} euro-area distributional series (${AREAS.join(', ')})`);
+
+// ── Canada: Statistics Canada WDS, table 36100660 ───────────────────────────
+// Keyless REST, quarterly 2010..now. One honesty caveat that must survive into
+// the labels: Canada publishes QUINTILES, so its top group is the top 20% —
+// not comparable number-for-number with the US/ECB top-10% series. Vectors were
+// resolved from coordinates on table 36100660 (1.2.57.11 = distribution of net
+// worth, highest wealth quintile, etc.). Data is Q4-only before 2020, fully
+// quarterly after — the gap is real, not a fetch bug.
+// UK, Japan and Australia have no keyless distributional feed at all (ONS ships
+// Excel only, e-Stat wants a key, ABS carries nothing) — they end at a handful
+// of OECD survey years and cannot support charts like these.
+const CAN = [
+    ['CAN_T20', 1277969108, 1],        // top wealth quintile share of net worth, %
+    ['CAN_B20', 1277968976, 1],        // bottom wealth quintile share, %
+    ['CAN_TINC20', 1277968091, 1],     // top INCOME quintile share of net worth, %
+    ['CAN_MEAN', 1277967937, 1e-3],    // mean net worth per household, CAD -> k$
+];
+try {
+    const r = await fetch('https://www150.statcan.gc.ca/t1/wds/rest/getDataFromVectorsAndLatestNPeriods', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(CAN.map(([, v]) => ({ vectorId: v, latestN: 70 }))),
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const arr = await r.json();
+    // The response array is NOT in request order (WDS returns vectors sorted by
+    // id) — indexing positionally handed every series its neighbour's data, with
+    // the mean-dollars vector landing under the "top quintile share" label.
+    // Match on the vectorId echoed in each response object.
+    const byVec = new Map(arr.map(x => [String(x?.object?.vectorId), x]));
+    let ok = 0;
+    for (let i = 0; i < CAN.length; i++) {
+        const [id, vec, scale] = CAN[i];
+        const pts = (byVec.get(String(vec))?.object?.vectorDataPoint || [])
+            .map(p => ({ d: p.refPer, v: p.value != null ? p.value * scale : null }))
+            .filter(o => o.v != null && isFinite(o.v))
+            .sort((a, b) => a.d.localeCompare(b.d));
+        if (pts.length < 8) { console.error(`intl: ${id} only ${pts.length} obs — skipped`); continue; }
+        writeFileSync(DATA + id + '.json', JSON.stringify({ id, fetchedAt: new Date().toISOString(), obs: pts }));
+        ok++;
+    }
+    console.log(`intl: wrote ${ok} Canadian distributional series (StatCan WDS)`);
+} catch (e) { console.error('intl: StatCan failed —', e.message); }

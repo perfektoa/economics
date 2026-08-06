@@ -136,6 +136,13 @@ export const SERIES = [
     { id: 'DWA_FR_MED', label: 'Median Household Wealth — France',   unit: 'k€', kind: 'level', dec: 0, group: 'ineqw', src: 'local', optional: true },
     { id: 'DWA_IT_MED', label: 'Median Household Wealth — Italy',    unit: 'k€', kind: 'level', dec: 0, group: 'ineqw', src: 'local', optional: true },
     { id: 'DWA_ES_MED', label: 'Median Household Wealth — Spain',    unit: 'k€', kind: 'level', dec: 0, group: 'ineqw', src: 'local', optional: true },
+    // Canada (StatCan WDS): QUINTILES, so the top group is the top 20% — the
+    // labels say so because 65% held by the top fifth and 75% held by the top
+    // tenth are different claims and must not be read side by side as one.
+    { id: 'CAN_T20',    label: 'Top 20% Wealth Share — Canada (quintile)',    unit: '%',  kind: 'level', dec: 1, group: 'ineqw', src: 'local', optional: true },
+    { id: 'CAN_B20',    label: 'Bottom 20% Wealth Share — Canada (quintile)', unit: '%',  kind: 'level', dec: 1, group: 'ineqw', src: 'local', optional: true },
+    { id: 'CAN_TINC20', label: 'Wealth Held by Top Income Quintile — Canada', unit: '%',  kind: 'level', dec: 1, group: 'ineqw', src: 'local', optional: true },
+    { id: 'CAN_MEAN',   label: 'Mean Household Net Worth — Canada',           unit: 'k$', kind: 'level', dec: 0, group: 'ineqw', src: 'local', optional: true },
     // ── Margin debt (FINRA xlsx via fetch-margin.mjs, not FRED — src 'local') ──
     // MARGINGDP is the tracked form: raw margin debt hits a "record" almost every
     // year just because prices grow; dividing by GDP is what makes eras comparable.
