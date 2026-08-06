@@ -102,3 +102,38 @@ try {
     }
     console.log(`intl: wrote ${ok} Canadian distributional series (StatCan WDS)`);
 } catch (e) { console.error('intl: StatCan failed —', e.message); }
+
+// ── UK / Japan / Australia: WID estimates via Our World in Data ─────────────
+// These three publish no machine-readable distributional feed of their own
+// (ONS ships Excel, e-Stat wants a key, ABS has nothing). Our World in Data
+// ingests the World Inequality Database — Piketty's project, built for the UK
+// from ONS survey plus estate-tax data — and serves every chart as a keyless
+// CSV. Annual, ESTIMATES rather than official central-bank accounts, so the
+// labels carry "(WID)" to keep the provenance visible. UK series reach back to
+// 1820, which also makes this the deepest history anywhere on the dashboard.
+const OWID = [
+    ['T1', 'https://ourworldindata.org/grapher/wealth-share-richest-1-percent.csv'],
+    ['T10', 'https://ourworldindata.org/grapher/wealth-share-richest-10-percent.csv'],
+];
+const WANT = { GBR: 'GB', JPN: 'JP', AUS: 'AU' };
+for (const [key, url] of OWID) {
+    try {
+        const r = await fetch(url, { headers: { 'User-Agent': 'macro-monitor (personal dashboard)' } });
+        if (!r.ok) { console.error(`intl: OWID ${key} HTTP ${r.status}`); continue; }
+        const rows = (await r.text()).split('\n');
+        const byIso = {};
+        for (const line of rows.slice(1)) {
+            const m = line.match(/^[^,]+,([A-Z]{3}),(\d{4}),([\d.]+)/);
+            if (!m || !WANT[m[1]]) continue;
+            (byIso[m[1]] ||= []).push({ d: `${m[2]}-01-01`, v: +m[3] });
+        }
+        for (const [iso3, cc] of Object.entries(WANT)) {
+            const obs = (byIso[iso3] || []).sort((a, b) => a.d.localeCompare(b.d));
+            if (obs.length < 10) { console.error(`intl: OWID ${key} ${iso3} only ${obs.length} rows`); continue; }
+            const id = `WID_${cc}_${key}`;
+            writeFileSync(DATA + id + '.json', JSON.stringify({ id, fetchedAt: new Date().toISOString(), obs }));
+        }
+    } catch (e) { console.error(`intl: OWID ${key} —`, e.message); }
+    await new Promise(res => setTimeout(res, 300));
+}
+console.log('intl: wrote WID series for GB/JP/AU via Our World in Data');

@@ -50,7 +50,16 @@ for (const s of SERIES) {
     if (pts.length < 2) { dropped.push(`${s.label} (too short)`); continue; }
     const lastYm = pts[pts.length - 1][0];
     const staleMonths = monthsBetween(lastYm, NOW_YM);
-    if (staleMonths > STALE_DROP_MONTHS) { dropped.push(`${s.label} (stale: ends ${lastYm})`); continue; }
+    // Staleness must be judged against how often the series PUBLISHES. A flat
+    // 30-month cutoff silently dropped every annual series 2.5 years into its
+    // normal publication cycle — the WID wealth shares, the Gini, real median
+    // income — all current data that simply arrives once a year with a lag.
+    // Allow 3x the series' own typical observation gap, floored at the flat
+    // cutoff so fast series keep the strict rule.
+    const gaps = pts.slice(-6).map((p, i, a) => i ? monthsBetween(a[i - 1][0], p[0]) : 0).filter(Boolean).sort((a, b) => a - b);
+    const typGap = gaps[Math.floor(gaps.length / 2)] || 1;
+    const allow = Math.max(STALE_DROP_MONTHS, typGap * 3);
+    if (staleMonths > allow) { dropped.push(`${s.label} (stale: ends ${lastYm})`); continue; }
     if (s.fallbackFor && built[s.fallbackFor]) continue;
     built[s.id] = {
         id: s.id, label: s.label, unit: s.unit, dec: s.dec, group: s.group,
@@ -149,6 +158,7 @@ const DIR = {
     DWA_EA_B50: 'good', DWA_DE_B50: 'good', DWA_FR_B50: 'good', DWA_IT_B50: 'good', DWA_ES_B50: 'good', DWA_NL_B50: 'good',
     DWA_DE_MED: 'good', DWA_FR_MED: 'good', DWA_IT_MED: 'good', DWA_ES_MED: 'good',
     CAN_T20: 'bad', CAN_B20: 'good', CAN_TINC20: 'bad', CAN_MEAN: 'good',
+    WID_GB_T1: 'bad', WID_GB_T10: 'bad', WID_JP_T1: 'bad', WID_JP_T10: 'bad', WID_AU_T1: 'bad', WID_AU_T10: 'bad',
 };
 
 // Historical tendencies at extremes — study prompts with base rates, not signals.
@@ -993,7 +1003,7 @@ ${deskPlays.map(([title, body], i) => `<div style="padding:6px 12px;${i < deskPl
 <h2>US Economy</h2><div class="cells">${cells('us')}</div>
 ${payload.series.some(s => s.group === 'ineq') ? `<h2>Wealth &amp; Inequality — United States <span style="color:var(--muted);text-transform:none;letter-spacing:0;">— the slow structural dials: who holds the wealth shapes how every fast indicator behaves. All US data (Federal Reserve / BEA); international comparison below.</span></h2>
 <div class="cells">${cells('ineq')}</div>` : ''}
-${payload.series.some(s => s.group === 'ineqw') ? `<h2>Wealth &amp; Inequality — Euro Area &amp; Canada <span style="color:var(--muted);text-transform:none;letter-spacing:0;">— the same dials from other countries' central-bank equivalents of the Fed data above: the ECB's Distributional Wealth Accounts (quarterly since 2011) and Statistics Canada's household economic accounts (quarterly since 2010, annual before 2020). The ECB publishes nothing finer than the top 5% and Canada publishes QUINTILES — top 20%, not top 10% — so compare each country with its own past, not number-for-number across countries. The UK, Japan and Australia publish no machine-readable equivalent at all; they end at a handful of OECD survey years.</span></h2>
+${payload.series.some(s => s.group === 'ineqw') ? `<h2>Wealth &amp; Inequality — International <span style="color:var(--muted);text-transform:none;letter-spacing:0;">— the same dials from other countries' central-bank equivalents of the Fed data above: the ECB's Distributional Wealth Accounts (quarterly since 2011) and Statistics Canada's household economic accounts (quarterly since 2010, annual before 2020). The ECB publishes nothing finer than the top 5% and Canada publishes QUINTILES — top 20%, not top 10% — so compare each country with its own past, not number-for-number across countries. The UK, Japan and Australia publish no official machine-readable equivalent, so their series are annual World Inequality Database estimates via Our World in Data — marked (WID), and the UK line reaches back to 1820.</span></h2>
 <div class="cells">${cells('ineqw')}</div>` : ''}
 ${(() => {
     // International counterpart to the US-only cells above. Uses the OECD wealth
@@ -1415,7 +1425,7 @@ const CHART_SECTIONS = [
     ['analogx', 'Historical Similarity'],
     ['us', 'US Economy'],
     ['ineq', 'Wealth & Inequality — US'],
-    ['ineqw', 'Wealth & Inequality — Euro Area & Canada'],
+    ['ineqw', 'Wealth & Inequality — International'],
     ['debt', 'Sovereign Debt'],
     ['mkt', 'Commodities & Dollar'],
     ['real', 'Commodities, Inflation-Adjusted'],

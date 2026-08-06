@@ -143,6 +143,14 @@ export const SERIES = [
     { id: 'CAN_B20',    label: 'Bottom 20% Wealth Share — Canada (quintile)', unit: '%',  kind: 'level', dec: 1, group: 'ineqw', src: 'local', optional: true },
     { id: 'CAN_TINC20', label: 'Wealth Held by Top Income Quintile — Canada', unit: '%',  kind: 'level', dec: 1, group: 'ineqw', src: 'local', optional: true },
     { id: 'CAN_MEAN',   label: 'Mean Household Net Worth — Canada',           unit: 'k$', kind: 'level', dec: 0, group: 'ineqw', src: 'local', optional: true },
+    // UK/Japan/Australia via WID estimates (Our World in Data CSV) — annual
+    // academic estimates, not official accounts; UK history reaches 1820.
+    { id: 'WID_GB_T1',  label: 'Top 1% Wealth Share — UK (WID)',        unit: '%', kind: 'level', dec: 1, group: 'ineqw', src: 'local', optional: true },
+    { id: 'WID_GB_T10', label: 'Top 10% Wealth Share — UK (WID)',       unit: '%', kind: 'level', dec: 1, group: 'ineqw', src: 'local', optional: true },
+    { id: 'WID_JP_T1',  label: 'Top 1% Wealth Share — Japan (WID)',     unit: '%', kind: 'level', dec: 1, group: 'ineqw', src: 'local', optional: true },
+    { id: 'WID_JP_T10', label: 'Top 10% Wealth Share — Japan (WID)',    unit: '%', kind: 'level', dec: 1, group: 'ineqw', src: 'local', optional: true },
+    { id: 'WID_AU_T1',  label: 'Top 1% Wealth Share — Australia (WID)', unit: '%', kind: 'level', dec: 1, group: 'ineqw', src: 'local', optional: true },
+    { id: 'WID_AU_T10', label: 'Top 10% Wealth Share — Australia (WID)', unit: '%', kind: 'level', dec: 1, group: 'ineqw', src: 'local', optional: true },
     // ── Margin debt (FINRA xlsx via fetch-margin.mjs, not FRED — src 'local') ──
     // MARGINGDP is the tracked form: raw margin debt hits a "record" almost every
     // year just because prices grow; dividing by GDP is what makes eras comparable.
