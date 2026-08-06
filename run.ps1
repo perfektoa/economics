@@ -9,6 +9,7 @@ if (-not $?) { Write-Host "fetch had errors - building with cached data anyway" 
 node fetch-calendar.mjs
 node fetch-debt.mjs
 node fetch-margin.mjs
+node fetch-compare.mjs
 node build-dashboard.mjs
 if ($?) { node check-alerts.mjs }
 node check-trump.mjs

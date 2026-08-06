@@ -990,6 +990,100 @@ ${deskPlays.map(([title, body], i) => `<div style="padding:6px 12px;${i < deskPl
 ${payload.series.some(s => s.group === 'ineq') ? `<h2>Wealth &amp; Inequality <span style="color:var(--muted);text-transform:none;letter-spacing:0;">— the slow structural dials: who holds the wealth shapes how every fast indicator behaves</span></h2>
 <div class="cells">${cells('ineq')}</div>` : ''}
 ${(() => {
+    // Assumptions worth checking: pairs of country-level indicators where the
+    // relationship most people assume is not the one in the data. Each pair
+    // declares its source block and NEVER crosses them — World Bank and Eurostat
+    // both publish a "Gini" that differ by 4+ points for the same country, so a
+    // cross-source correlation would be measuring methodology, not the world.
+    let cmp = null;
+    try { cmp = JSON.parse(readFileSync(new URL('./compare.json', import.meta.url), 'utf8')); } catch (_) {}
+    if (!cmp) return '';
+    const corr = (rows, a, b) => {
+        const p = rows.filter(r => r[a] != null && r[b] != null);
+        if (p.length < 8) return null;
+        const ma = p.reduce((s, r) => s + r[a], 0) / p.length, mb = p.reduce((s, r) => s + r[b], 0) / p.length;
+        let n = 0, da = 0, db = 0;
+        for (const r of p) { n += (r[a] - ma) * (r[b] - mb); da += (r[a] - ma) ** 2; db += (r[b] - mb) ** 2; }
+        return { r: n / Math.sqrt(da * db), n: p.length, pts: p };
+    };
+    const PAIRS = [
+        { src: 'eurostat', x: 'homeownership', y: 'gini',
+          xl: 'Homeownership rate (%)', yl: 'Inequality (Gini)',
+          assume: 'A nation of homeowners is a more equal nation — owning property is how ordinary families build wealth.',
+          scope: 'EU countries, Eurostat' },
+        { src: 'eurostat', x: 'ownOutright', y: 'gini',
+          xl: 'Own outright, no mortgage (%)', yl: 'Inequality (Gini)',
+          assume: 'Where more people own their home free and clear, wealth should be more evenly spread.',
+          scope: 'EU countries, Eurostat' },
+        { src: 'worldBank', x: 'gdpPerCapita', y: 'gini',
+          xl: 'GDP per capita ($)', yl: 'Inequality (Gini)',
+          assume: 'Rich countries are more equal — growth lifts everyone.',
+          scope: 'All countries, World Bank' },
+        { src: 'worldBank', x: 'healthSpend', y: 'lifeExpectancy',
+          xl: 'Health spending (% of GDP)', yl: 'Life expectancy (years)',
+          assume: 'Spending more on healthcare buys longer lives.',
+          scope: 'All countries, World Bank', rich: true },
+        { src: 'worldBank', x: 'urbanPct', y: 'gini',
+          xl: 'Urban population (%)', yl: 'Inequality (Gini)',
+          assume: 'Urbanisation concentrates wealth and drives inequality up.',
+          scope: 'All countries, World Bank' },
+    ];
+    const strength = (r) => { const a = Math.abs(r);
+        return a < 0.2 ? ['NO RELATIONSHIP', 'var(--bad)'] : a < 0.4 ? ['WEAK', 'var(--warn)'] : a < 0.7 ? ['MODERATE', 'var(--good)'] : ['STRONG', 'var(--good)']; };
+    const cards = PAIRS.map(p => {
+        const rows = cmp[p.src] || [];
+        const c = corr(rows, p.x, p.y);
+        if (!c) return '';
+        const [word, colour] = strength(c.r);
+        // Scatter. Log the x-axis for GDP per capita — otherwise 170 countries pile
+        // into the left tenth and the plot shows nothing.
+        const logX = p.x === 'gdpPerCapita';
+        const xv = (r) => logX ? Math.log10(Math.max(1, r[p.x])) : r[p.x];
+        const W = 260, H = 150, L = 34, R = 8, T = 8, B = 22;
+        const xs = c.pts.map(xv), ys = c.pts.map(r => r[p.y]);
+        const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+        const X = (v) => L + (v - x0) / ((x1 - x0) || 1) * (W - L - R);
+        const Y = (v) => T + (y1 - v) / ((y1 - y0) || 1) * (H - T - B);
+        const dots = c.pts.map(r => {
+            const us = r.iso === 'USA' || r.iso2 === 'US';
+            return `<circle cx="${X(xv(r)).toFixed(1)}" cy="${Y(r[p.y]).toFixed(1)}" r="${us ? 4 : 2.5}" fill="${us ? 'var(--accent)' : 'var(--chart)'}" opacity="${us ? 1 : 0.65}"><title>${esc(r.name)}: ${r[p.x].toFixed(1)} / ${r[p.y].toFixed(1)}</title></circle>`;
+        }).join('');
+        // Least-squares fit line, drawn so the eye can judge the claim.
+        const mx = xs.reduce((s, v) => s + v, 0) / xs.length, my = ys.reduce((s, v) => s + v, 0) / ys.length;
+        let num = 0, den = 0;
+        for (let i = 0; i < xs.length; i++) { num += (xs[i] - mx) * (ys[i] - my); den += (xs[i] - mx) ** 2; }
+        const slope = den ? num / den : 0, icpt = my - slope * mx;
+        const fit = `<line x1="${X(x0)}" y1="${Y(slope * x0 + icpt)}" x2="${X(x1)}" y2="${Y(slope * x1 + icpt)}" stroke="${colour}" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.8"/>`;
+        const richNote = p.rich ? (() => {
+            const rich = rows.filter(r => r.gdpPerCapita > 35000);
+            const rc = corr(rich, p.x, p.y);
+            return rc ? ` Among the ${rc.n} richest countries alone it turns <b>negative (${rc.r.toFixed(2)})</b> — past a certain point, more spending goes with shorter lives, and the United States is the extreme case: the highest health spending in the world at ${rows.find(r => r.iso === 'USA')?.healthSpend.toFixed(1)}% of GDP and a life expectancy of ${rows.find(r => r.iso === 'USA')?.lifeExpectancy.toFixed(1)} years, below every other rich country here.` : '';
+        })() : '';
+        return `<div style="border:1px solid var(--line);border-radius:6px;background:var(--panel);padding:8px 10px;">
+    <div style="color:var(--muted);font-size:11px;">${esc(p.scope)} · n=${c.n}</div>
+    <div style="color:var(--ink);margin:3px 0;"><b style="color:var(--muted);">Common belief:</b> ${esc(p.assume)}</div>
+    <div style="margin:4px 0;"><span style="color:${colour};font-weight:700;">${word}</span>
+        <span style="color:var(--muted);"> — correlation ${c.r.toFixed(2)}</span></div>
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;">
+        <line x1="${L}" y1="${T}" x2="${L}" y2="${H - B}" stroke="var(--line)"/>
+        <line x1="${L}" y1="${H - B}" x2="${W - R}" y2="${H - B}" stroke="var(--line)"/>
+        ${fit}${dots}
+        <text x="${L}" y="${H - 6}" fill="var(--muted)" font-size="8">${logX ? '$' + Math.round(10 ** x0).toLocaleString() : x0.toFixed(0)}</text>
+        <text x="${W - R}" y="${H - 6}" fill="var(--muted)" font-size="8" text-anchor="end">${logX ? '$' + Math.round(10 ** x1).toLocaleString() : x1.toFixed(0)}</text>
+        <text x="${L - 4}" y="${T + 8}" fill="var(--muted)" font-size="8" text-anchor="end">${y1.toFixed(0)}</text>
+        <text x="${L - 4}" y="${H - B}" fill="var(--muted)" font-size="8" text-anchor="end">${y0.toFixed(0)}</text>
+    </svg>
+    <div style="color:var(--muted);font-size:11px;">${esc(p.xl)} (across) vs ${esc(p.yl)} (up).${c.pts.some(r => r.iso === 'USA') ? ' Amber dot = United States.' : ' EU only — the US is not in this dataset.'}${richNote}</div>
+</div>`;
+    }).filter(Boolean).join('');
+    if (!cards) return '';
+    return `<h2>Assumptions Worth Checking <span style="color:var(--muted);text-transform:none;letter-spacing:0;">— relationships people take for granted, measured</span></h2>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:8px;">${cards}</div>
+<div style="padding:6px 10px;margin-top:6px;font-size:11px;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:6px;">
+Correlation runs from −1 to +1. Zero means knowing one number tells you nothing about the other. Below about 0.2 in either direction there is no usable relationship, whatever the story says. These are correlations across countries at one moment, not proof of cause — a country differs from another in a thousand ways at once. What they DO settle is the weaker claim people usually make without checking: that the relationship exists at all and points a particular way. Each panel stays inside one source, because World Bank and Eurostat both publish a "Gini" that disagree by four points for the same country.
+</div>`;
+})()}
+${(() => {
     // Where the federal budget actually goes, by share, across sixty years.
     // Shares rather than dollars because dollars grow with everything else and
     // hide the only thing worth seeing: defense went from about half the budget
