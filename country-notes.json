@@ -1,0 +1,88 @@
+{
+  "_readme": "Hand-maintained context for the Assumptions Worth Checking scatters. Same idea as notes.json for the screener: things the numbers cannot tell you. A country only gets annotated on panels whose x or y key appears in its `keys` list, so a housing note does not clutter the health panel. Keep each note to one claim a reader can check, and record where it came from.",
+  "notes": [
+    {
+      "iso2": [
+        "RO",
+        "PL",
+        "HU",
+        "LT",
+        "LV",
+        "EE",
+        "SK",
+        "CZ",
+        "HR",
+        "SI",
+        "BG"
+      ],
+      "keys": [
+        "homeownership",
+        "ownOutright",
+        "wealthGini"
+      ],
+      "label": "Post-communist privatisation",
+      "text": "Homeownership above 85% across most of the former Eastern Bloc is not a housing-market outcome. Governments sold state-owned apartments to their sitting tenants at steep discounts in the 1990s, which turned millions of renters into owners in a few years. It also means these owners hold homes they never had to save a deposit for — so high ownership here says little about whether housing is affordable, and it is the single largest confounder in the ownership-versus-wealth correlation.",
+      "source": "Eurostat tenure data; widely documented mass-privatisation programmes of the 1990s"
+    },
+    {
+      "iso2": [
+        "DE"
+      ],
+      "keys": [
+        "homeownership",
+        "ownOutright",
+        "wealthGini",
+        "incomeGini"
+      ],
+      "label": "Germany: the informative outlier",
+      "text": "The lowest homeownership in Europe at 47% AND the highest net-wealth inequality at 72. Three reasons usually given: a large, high-quality, strongly tenant-protected rental sector means renting carries no penalty in security; there is no mortgage-interest deduction for owner-occupiers, so the tax code does not subsidise buying as it does in the US; and a comprehensive social-security and pension system reduces the need to accumulate private wealth at all. Note the last one cuts both ways — it lowers the pressure to own, which raises measured wealth inequality, while leaving people materially secure. High wealth inequality here does not mean the same thing it would in a country without that safety net.",
+      "source": "Deutsche Bundesbank research on low German homeownership; Eurostat icw_sr_05"
+    },
+    {
+      "iso2": [
+        "CH"
+      ],
+      "keys": [
+        "homeownership",
+        "ownOutright"
+      ],
+      "label": "Switzerland: priced out by design",
+      "text": "Around 42% ownership, the lowest in Western Europe. Banks require a 20% deposit with at least half of it from actual savings rather than pension assets, and purchase costs cannot be financed. Combined with some of the world's highest prices relative to income, buying is out of reach for most — while a heavily regulated rental market with capped increases and enforced maintenance standards makes renting a normal long-term choice rather than a fallback.",
+      "source": "Swiss lending rules (20% down, 10% from own savings); Swiss tenancy law"
+    },
+    {
+      "iso2": [
+        "US"
+      ],
+      "keys": [
+        "healthSpend",
+        "lifeExpectancy"
+      ],
+      "label": "US: the spending-outcome gap",
+      "text": "The highest health spending in the world at 16.7% of GDP, and the lowest life expectancy of any rich country at 78.9 years. The gap is not mainly about hospital quality for those who reach one — it is concentrated in deaths before 65 from causes medicine mostly does not treat. Three injury causes account for roughly 69% of the gap with peer countries: drug overdoses (32%), firearm deaths including suicides (20%), and motor-vehicle crashes (17%). Americans in their twenties die at about three times the rate of peer nations. The US tracked its peers until roughly 1980, then diverged.",
+      "source": "Yale School of Public Health / AAMC analyses of the US life-expectancy gap; World Bank health expenditure"
+    },
+    {
+      "iso2": [
+        "ZAF",
+        "NAM",
+        "BWA",
+        "COL",
+        "BRA",
+        "ZA",
+        "NA",
+        "BW",
+        "CO",
+        "BR"
+      ],
+      "keys": [
+        "gini",
+        "gdpPerCapita"
+      ],
+      "label": "The highest Ginis on earth",
+      "text": "Southern Africa and parts of Latin America hold the widest income gaps ever measured, with South Africa above 60. These are legacies of apartheid and colonial land settlement rather than of recent economic policy, and they are why the global GDP-versus-inequality correlation is weak: several middle-income countries are far more unequal than any poor country, so the line through the scatter is doing very little work.",
+      "source": "World Bank SI.POV.GINI",
+      "_note": "World Bank records key on iso3, Eurostat on iso2 — list both so a note matches whichever source the panel reads."
+    }
+  ]
+}

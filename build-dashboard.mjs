@@ -998,6 +998,14 @@ ${(() => {
     let cmp = null;
     try { cmp = JSON.parse(readFileSync(new URL('./compare.json', import.meta.url), 'utf8')); } catch (_) {}
     if (!cmp) return '';
+    // Hand-written context for outliers whose position has a historical cause the
+    // numbers cannot show — Eastern Europe's 90% ownership is a 1990s giveaway,
+    // not a housing market. A note only attaches to panels whose axes it claims
+    // to be about, so a housing note never lands on the health panel.
+    let cnotes = [];
+    try { cnotes = JSON.parse(readFileSync(new URL('./country-notes.json', import.meta.url), 'utf8')).notes || []; } catch (_) {}
+    const notesFor = (p) => cnotes.filter(n => n.keys.includes(p.x) || n.keys.includes(p.y));
+    const flagged = (p) => new Set(notesFor(p).flatMap(n => n.iso2));
     const corr = (rows, a, b) => {
         const p = rows.filter(r => r[a] != null && r[b] != null);
         if (p.length < 8) return null;
@@ -1046,9 +1054,24 @@ ${(() => {
         const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
         const X = (v) => L + (v - x0) / ((x1 - x0) || 1) * (W - L - R);
         const Y = (v) => T + (y1 - v) / ((y1 - y0) || 1) * (H - T - B);
+        const marked = flagged(p);
+        const isFlagged = (r) => marked.has(r.iso2) || marked.has(r.iso === 'USA' ? 'US' : r.iso);
         const dots = c.pts.map(r => {
             const us = r.iso === 'USA' || r.iso2 === 'US';
-            return `<circle cx="${X(xv(r)).toFixed(1)}" cy="${Y(r[p.y]).toFixed(1)}" r="${us ? 4 : 2.5}" fill="${us ? 'var(--accent)' : 'var(--chart)'}" opacity="${us ? 1 : 0.65}"><title>${esc(r.name)}: ${r[p.x].toFixed(1)} / ${r[p.y].toFixed(1)}</title></circle>`;
+            const note = isFlagged(r);
+            // Annotated countries get a hollow warn-coloured ring so the eye can
+            // see, before reading a word, that those points have a story.
+            return `<circle cx="${X(xv(r)).toFixed(1)}" cy="${Y(r[p.y]).toFixed(1)}" r="${us || note ? 4 : 2.5}" fill="${us ? 'var(--accent)' : note ? 'none' : 'var(--chart)'}"${note && !us ? ' stroke="var(--warn)" stroke-width="1.5"' : ''} opacity="${us || note ? 1 : 0.6}"><title>${esc(r.name)}: ${r[p.x].toFixed(1)} / ${r[p.y].toFixed(1)}${note ? ' — see note below' : ''}</title></circle>`;
+        }).join('');
+        const noteBlocks = notesFor(p).map(n => {
+            const present = c.pts.filter(r => n.iso2.includes(r.iso2) || n.iso2.includes(r.iso === 'USA' ? 'US' : r.iso));
+            if (!present.length) return '';
+            return `<div style="margin-top:5px;padding:5px 7px;border-left:2px solid var(--warn);background:rgba(189,138,30,0.07);">
+        <b style="color:var(--warn);">${esc(n.label)}</b>
+        <span style="color:var(--muted);"> — ${present.map(r => esc(r.name)).join(', ')}</span>
+        <div style="color:var(--ink);margin-top:2px;">${esc(n.text)}</div>
+        ${n.source ? `<div style="color:var(--muted);font-size:10px;margin-top:2px;">Source: ${esc(n.source)}</div>` : ''}
+    </div>`;
         }).join('');
         // Least-squares fit line, drawn so the eye can judge the claim.
         const mx = xs.reduce((s, v) => s + v, 0) / xs.length, my = ys.reduce((s, v) => s + v, 0) / ys.length;
@@ -1075,7 +1098,8 @@ ${(() => {
         <text x="${L - 4}" y="${T + 8}" fill="var(--muted)" font-size="8" text-anchor="end">${y1.toFixed(0)}</text>
         <text x="${L - 4}" y="${H - B}" fill="var(--muted)" font-size="8" text-anchor="end">${y0.toFixed(0)}</text>
     </svg>
-    <div style="color:var(--muted);font-size:11px;">${esc(p.xl)} (across) vs ${esc(p.yl)} (up).${c.pts.some(r => r.iso === 'USA') ? ' Amber dot = United States.' : ' EU only — the US is not in this dataset.'}${richNote}${p.note ? ' ' + esc(p.note) : ''}</div>
+    <div style="color:var(--muted);font-size:11px;">${esc(p.xl)} (across) vs ${esc(p.yl)} (up).${c.pts.some(r => r.iso === 'USA') ? ' Amber dot = United States.' : ' EU only — the US is not in this dataset.'}${richNote}${p.note ? ' ' + esc(p.note) : ''}${marked.size ? ' Ringed points have a note below.' : ''}</div>
+    ${noteBlocks}
 </div>`;
     }).filter(Boolean).join('');
     if (!cards) return '';
