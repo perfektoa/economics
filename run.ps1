@@ -2,6 +2,15 @@
 # Usage: .\run.ps1          (uses <20h cache when available)
 #        .\run.ps1 -Force   (refetch everything)
 param([switch]$Force, [switch]$NoOpen)
+# Refuse to overlap: if another dashboard update is mid-run (slow network, or a
+# manual run colliding with the hourly task), exit quietly instead of racing it
+# for the same files. Task Scheduler's own overlap policy cannot help here - the
+# .vbs launcher detaches and exits instantly, so the task always looks finished.
+# A named mutex is held by the OS and dies with its process; it cannot go stale.
+$mtx = New-Object System.Threading.Mutex($false, 'Global\MacroMonitorRun')
+$got = $false
+try { $got = $mtx.WaitOne(0) } catch [System.Threading.AbandonedMutexException] { $got = $true }
+if (-not $got) { Write-Host "Another dashboard update is already running - skipping this one."; exit 0 }
 $here = $PSScriptRoot
 Set-Location $here
 if ($Force) { node fetch-data.mjs --force } else { node fetch-data.mjs }
