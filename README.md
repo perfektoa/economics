@@ -44,11 +44,36 @@ coloured against its own sector's median, ROE, insider buying, dilution, and
 warnings for commodity peaks, forecast earnings cliffs and profits not backed
 by cash. Everything wrong with a row is compressed into one hover chip.
 
+## Phone alerts (optional)
+
+If you give setup an [ntfy.sh](https://ntfy.sh) topic, your phone gets a push
+notification when something actually changes — not on a schedule, only on
+changes, so a quiet week is a quiet phone:
+
+- **The Fed moves rates** — detected from the data itself (the target rate
+  series changing by 0.125+), usually within the hour, high priority
+- **The regime label changes** — the dashboard's one-line summary of conditions
+  (e.g. easing-while-inflation-rises) flips to something else
+- **A risk flag turns on or off** — inverted yield curve, credit spreads
+  blowing out, claims trending up, and the rest of the dashboard's warning
+  chips; you're told which flag and what else is currently active
+- **A release day starts** — one morning ping on CPI / jobs-report / FOMC days
+  so a big print doesn't catch you blind
+- **A market-relevant Trump post** — his feed is polled hourly for
+  market-moving keywords (tariffs, the Fed, taxes...); new matches get pushed,
+  capped at 3 per run
+
+Setup: install the free ntfy app (Android/iPhone), subscribe in the app to a
+topic name you invent, and give setup the same name. No account needed. The
+topic name is effectively a password — anyone who knows it can see your
+alerts — so make it long and random. A test notification confirms the wiring
+on first run; alerts only fire while the hourly update task is on (they ride
+the same refresh).
+
 ## Notes
 
 - **Your key stays yours.** `config.json` lives only on your PC and is
-  gitignored. Optional phone alerts use [ntfy.sh](https://ntfy.sh) (free, no
-  account).
+  gitignored.
 - **Mac/Linux**: no one-click setup, but everything except the FINRA margin
   fetch is plain Node — `npm install`, copy `config.example.json` to
   `config.json` with your key, then run the `fetch-*.mjs` scripts and
