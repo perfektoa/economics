@@ -28,7 +28,7 @@ async function notify(title, body, priority = 'default') {
 const fmtChips = () => snap.chips.filter(c => c.on).map(c => c.label).join(', ') || 'none active';
 
 if (process.argv.includes('--test') || !existsSync(stateFile)) {
-    await notify('Macro Monitor connected',
+    await notify('Economics Monitor connected',
         `Test alert. Current regime: ${snap.regime}. Active flags: ${fmtChips()}. You will only hear from me when something changes.`);
     writeFileSync(stateFile, JSON.stringify({ regime: snap.regime, chips: snap.chips }, null, 2));
     console.log('baseline saved + test notification sent to ntfy.sh/' + TOPIC);

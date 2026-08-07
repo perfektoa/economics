@@ -381,7 +381,7 @@ footer { color:var(--muted); margin-top:18px; font-size:11px; line-height:1.6; b
 .count { color:var(--muted); margin-left:auto; }
 </style></head><body><div class="wrap">
 <h1>VALUE SCREENER <span style="color:var(--muted)">— real world</span></h1>
-<div class="sub">${rows.length.toLocaleString()} US common stocks (mega → micro cap) · Value + Quality + Momentum scores · data ${asOf} UTC · <a href="dashboard.html" style="color:var(--accent)">macro monitor →</a></div>
+<div class="sub">${rows.length.toLocaleString()} US common stocks (mega → micro cap) · Value + Quality + Momentum scores · data ${asOf} UTC · <a href="dashboard.html" style="color:var(--accent)">economics monitor →</a></div>
 ${clusterBanner ? `<div class="banner"><b style="color:var(--bad)">ONE BET, SEVERAL TICKERS:</b> ${clusterBanner}. Names in one industry rise and fall together — treat each group as a single idea, not independent picks.</div>` : ''}
 ${readingList.length ? `<div style="background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 12px;margin-bottom:10px;">
 <div style="color:var(--accent);font-weight:700;margin-bottom:5px;">START HERE — one name per distinct bet, highest scoring, cleanest first</div>

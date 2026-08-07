@@ -1,4 +1,4 @@
-// Tiny local server for the macro monitor — serves the dashboard. Binds
+// Tiny local server for the economics monitor — serves the dashboard. Binds
 // 127.0.0.1 only.
 //   GET  /   -> dashboard.html
 // It used to also host the Forecast Journal write API; that feature was removed,
@@ -20,4 +20,4 @@ createServer(async (req, res) => {
         if (!p.startsWith(ROOT) || !existsSync(p)) return send(404, { error: 'not found' });
         return send(200, readFileSync(p), MIME[path.extname(p)] || 'application/octet-stream');
     } catch (e) { return send(500, { error: e.message }); }
-}).listen(PORT, '127.0.0.1', () => console.log(`macro-monitor server on http://localhost:${PORT}`));
+}).listen(PORT, '127.0.0.1', () => console.log(`economics-monitor server on http://localhost:${PORT}`));

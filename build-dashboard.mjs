@@ -885,7 +885,7 @@ const cells = (group) => payload.series.filter(s => s.group === group).map(s => 
     </div>`).join('');
 
 const html = `<!doctype html>
-<html><head><meta charset="utf-8"><meta http-equiv="refresh" content="1800"><title>Macro Monitor — Real World</title>
+<html><head><meta charset="utf-8"><meta http-equiv="refresh" content="1800"><title>Economics Monitor</title>
 <style>
 :root { --bg:#16150f; --panel:#1e1c14; --panel2:#232013; --line:#37331f; --ink:#e6e1d3;
   --muted:#9d9683; --accent:#e8b23c; --good:#4aa869; --bad:#d65344; --warn:#bd8a1e; --chart:#4489c8; }
@@ -929,7 +929,7 @@ footer { color:var(--muted); margin-top:24px; font-size:11px; line-height:1.6; b
 details summary { cursor:pointer; color:var(--muted); margin:14px 0 6px; }
 </style></head><body><div class="wrap">
 <div class="hdr">
-  <h1>MACRO MONITOR <span style="color:var(--muted)">— real world · <a href="screener.html" style="color:var(--accent)">value screener →</a></span></h1>
+  <h1>ECONOMICS MONITOR <span style="color:var(--muted)">— real world · <a href="screener.html" style="color:var(--accent)">value screener →</a></span></h1>
   <span style="display:flex;gap:10px;align-items:center;">
     <span id="built" style="font-size:11px;color:var(--muted);" title="When this page was last rebuilt. Green = fresh (hourly task healthy). Red = the task may have stopped — run run.ps1 or: schtasks /run /tn MacroMonitor"></span>
     <span class="regime ${regimeTone}">${esc(regimeLabel)}</span>

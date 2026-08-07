@@ -1,7 +1,7 @@
 {
-  "name": "macro-monitor",
+  "name": "economics-monitor",
   "version": "1.0.0",
-  "description": "A local, watch-only macro dashboard: ~90 FRED and Yahoo series scored against their own history, sovereign debt and wealth concentration data, historical analogs, a value screener, and a self-scoring forecast journal. Educational, not investment advice.",
+  "description": "A local, watch-only economics dashboard: ~90 FRED and Yahoo series scored against their own history, sovereign debt and wealth concentration data, historical analogs, a value screener, and a self-scoring forecast journal. Educational, not investment advice.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

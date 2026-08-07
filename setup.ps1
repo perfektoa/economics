@@ -8,7 +8,7 @@ Set-Location $here
 $ErrorActionPreference = 'Continue'
 
 Write-Host ""
-Write-Host "=== Macro Monitor setup ===" -ForegroundColor Cyan
+Write-Host "=== Economics Monitor setup ===" -ForegroundColor Cyan
 Write-Host ""
 
 # -- 1. Node -----------------------------------------------------------------
@@ -80,19 +80,19 @@ if (Test-Path "$here\dashboard.html") {
 }
 
 # -- 6. Desktop shortcut -----------------------------------------------------
-$lnk = [Environment]::GetFolderPath('Desktop') + "\Macro Monitor.lnk"
+$lnk = [Environment]::GetFolderPath('Desktop') + "\Economics Monitor.lnk"
 $ws = New-Object -ComObject WScript.Shell
 $sc = $ws.CreateShortcut($lnk)
 $sc.TargetPath = "$here\dashboard.html"
 $sc.Save()
-Write-Host "Desktop shortcut created: Macro Monitor" -ForegroundColor Green
+Write-Host "Desktop shortcut created: Economics Monitor" -ForegroundColor Green
 
 # -- 7. Screener: entirely optional ------------------------------------------
 Write-Host ""
 Write-Host "OPTIONAL: the stock screener. It scores ~4,500 US stocks on value, quality"
 Write-Host "and momentum - but that means downloading data for 4,500 companies: the"
 Write-Host "first build takes 1-2 hours, then a daily refresh keeps it current."
-Write-Host "If you only want the macro dashboard, say n - nothing screener-related"
+Write-Host "If you only want the economics dashboard, say n - nothing screener-related"
 Write-Host "will ever run or download."
 $scr = Read-Host "Set up the screener? (y/n)"
 if ($scr -match '^[yY]') {
@@ -108,5 +108,5 @@ if ($scr -match '^[yY]') {
 }
 
 Write-Host ""
-Write-Host "=== Done. Double-click 'Macro Monitor' on your desktop. ===" -ForegroundColor Cyan
+Write-Host "=== Done. Double-click 'Economics Monitor' on your desktop. ===" -ForegroundColor Cyan
 Read-Host "Press Enter to close"

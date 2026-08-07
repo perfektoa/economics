@@ -1,6 +1,6 @@
-# Macro Monitor
+# Economics Monitor
 
-A macro-economics dashboard and stock screener that run entirely on your own
+An economics dashboard and stock screener that run entirely on your own
 PC. Everything is free. Nothing leaves your machine.
 
 **Educational only.** It describes conditions and documented historical
@@ -18,7 +18,7 @@ advice.
 Setup asks for one thing: a **free FRED API key** (it shows you the link —
 signup takes a minute). It then offers to set up automatic updates
 (dashboard refreshes hourly, screener rebuilds daily), builds everything, and
-puts a **Macro Monitor** shortcut on your desktop.
+puts an **Economics Monitor** shortcut on your desktop.
 
 That's it. Double-click the shortcut. The page refreshes itself.
 

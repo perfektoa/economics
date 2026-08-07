@@ -118,7 +118,7 @@ const OWID = [
 const WANT = { GBR: 'GB', JPN: 'JP', AUS: 'AU' };
 for (const [key, url] of OWID) {
     try {
-        const r = await fetch(url, { headers: { 'User-Agent': 'macro-monitor (personal dashboard)' } });
+        const r = await fetch(url, { headers: { 'User-Agent': 'economics-monitor (personal dashboard)' } });
         if (!r.ok) { console.error(`intl: OWID ${key} HTTP ${r.status}`); continue; }
         const rows = (await r.text()).split('\n');
         const byIso = {};
