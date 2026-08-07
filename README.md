@@ -22,9 +22,11 @@ puts a **Macro Monitor** shortcut on your desktop.
 
 That's it. Double-click the shortcut. The page refreshes itself.
 
-The stock screener's first build downloads data for ~4,500 companies and takes
-1–2 hours — setup offers to run it in the background, or it just happens
-overnight on the daily schedule. After the first time it's fast.
+The stock screener is **optional, asked separately during setup** — say no and
+nothing screener-related ever runs or downloads. Say yes and its first build
+(data for ~4,500 companies, 1–2 hours) runs in the background or overnight;
+after the first time it's fast. Changed your mind either way? Just re-run
+`setup.bat`.
 
 ## What you're looking at
 
