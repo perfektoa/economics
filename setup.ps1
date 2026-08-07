@@ -59,13 +59,12 @@ if (-not (Test-Path "$here\config.json")) {
     Write-Host "config.json already exists - keeping it" -ForegroundColor Green
 }
 
-# -- 4. Automatic updates ----------------------------------------------------
+# -- 4. Automatic updates (dashboard only - screener decided separately) ------
 Write-Host ""
-$auto = Read-Host "Update automatically? Dashboard refreshes hourly, screener rebuilds daily at 8:10 (Y/n)"
+$auto = Read-Host "Keep the dashboard updated automatically, every hour? (Y/n)"
 if ($auto -eq '' -or $auto -match '^[yY]') {
     schtasks /create /f /tn "MacroMonitor" /sc hourly /tr "wscript.exe `"$here\silent.vbs`"" | Out-Null
-    schtasks /create /f /tn "MacroScreener" /sc daily /st 08:10 /tr "wscript.exe `"$here\silent-screener.vbs`"" | Out-Null
-    Write-Host "Scheduled: hourly dashboard, daily screener. Remove any time in Task Scheduler." -ForegroundColor Green
+    Write-Host "Scheduled. Remove any time in Task Scheduler (task name: MacroMonitor)." -ForegroundColor Green
 } else {
     Write-Host "Skipped. Re-run setup.bat later if you change your mind, or run run.ps1 by hand."
 }
@@ -88,17 +87,24 @@ $sc.TargetPath = "$here\dashboard.html"
 $sc.Save()
 Write-Host "Desktop shortcut created: Macro Monitor" -ForegroundColor Green
 
-# -- 7. Screener (optional, slow first time) ---------------------------------
+# -- 7. Screener: entirely optional ------------------------------------------
 Write-Host ""
-Write-Host "The stock screener downloads data for ~4,500 companies on its first run,"
-Write-Host "which takes 1-2 hours (it is fast afterwards - data is cached for a week)."
-$scr = Read-Host "Start the first screener build now, in the background? (y/N)"
+Write-Host "OPTIONAL: the stock screener. It scores ~4,500 US stocks on value, quality"
+Write-Host "and momentum - but that means downloading data for 4,500 companies: the"
+Write-Host "first build takes 1-2 hours, then a daily refresh keeps it current."
+Write-Host "If you only want the macro dashboard, say n - nothing screener-related"
+Write-Host "will ever run or download."
+$scr = Read-Host "Set up the screener? (y/n)"
 if ($scr -match '^[yY]') {
-    Start-Process wscript.exe "`"$here\silent-screener.vbs`""
-    Write-Host "Running in the background. screener.html will appear in this folder when done;" -ForegroundColor Green
-    Write-Host "after that the daily 8:10 task keeps it fresh."
+    schtasks /create /f /tn "MacroScreener" /sc daily /st 08:10 /tr "wscript.exe `"$here\silent-screener.vbs`"" | Out-Null
+    Write-Host "Daily refresh scheduled for 8:10 (task name: MacroScreener)." -ForegroundColor Green
+    $now = Read-Host "Start the first 1-2 hour build now, in the background? Otherwise it happens at the next 8:10 (y/N)"
+    if ($now -match '^[yY]') {
+        Start-Process wscript.exe "`"$here\silent-screener.vbs`""
+        Write-Host "Running in the background. screener.html will appear in this folder when done." -ForegroundColor Green
+    }
 } else {
-    Write-Host "Skipped. The daily task will build it overnight, or run screener.ps1 by hand."
+    Write-Host "Skipped entirely - no screener downloads will happen. Re-run setup.bat any time to add it."
 }
 
 Write-Host ""
