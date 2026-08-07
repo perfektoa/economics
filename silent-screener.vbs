@@ -1,2 +1,6 @@
-' Launches the daily screener refresh with no visible window.
-CreateObject("Wscript.Shell").Run "powershell.exe -NoProfile -ExecutionPolicy Bypass -File ""C:\GameDev\macro-monitor\screener.ps1"" -NoOpen", 0, False
+' Launches the daily screener refresh with no visible window. Resolves its own
+' folder, so it works wherever the repo was cloned.
+Dim fso, here
+Set fso = CreateObject("Scripting.FileSystemObject")
+here = fso.GetParentFolderName(WScript.ScriptFullName)
+CreateObject("Wscript.Shell").Run "powershell.exe -NoProfile -ExecutionPolicy Bypass -File """ & here & "\screener.ps1"" -NoOpen", 0, False

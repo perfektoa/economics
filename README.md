@@ -1,135 +1,64 @@
 # Macro Monitor
 
-A local, watch-only macro dashboard and value screener. Everything runs on your
-own machine, builds plain HTML files you open in a browser, and talks only to
-free public data APIs. No accounts (beyond one free API key), no server, no
-tracking, nothing leaves your PC.
-
-**The dashboard** (`dashboard.html`) pulls ~130 economic and market series and
-shows: current readings scored against their own full history (percentiles, so
-"is this normal?" is answered on every cell), full-history charts grouped into
-sections with recession shading, sector and industry heat tables, historical
-analogs (which past months looked most like today, and what followed), sovereign
-debt for 194 countries, wealth concentration for the US / euro area / Canada /
-UK / Japan / Australia, FINRA margin debt against its prior cycle peaks, federal
-spending by function back to 1959, cross-country "assumptions worth checking"
-scatters, and a rule-generated plain-English summary of what it all adds up to.
-
-**The screener** (`screener.html`) scores ~4,500 US stocks on value, quality and
-momentum (16 tests), with the metrics that matter in-row: P/E, forward P/E,
-EV/EBITDA, P/B, debt/equity, net margin coloured against the sector median,
-ROE, insider buying, share dilution, short interest, and cycle warnings
-(commodity peaks, forecast earnings cliffs, profits not backed by cash).
-Everything flagged on a row is compressed into one hover chip.
+A macro-economics dashboard and stock screener that run entirely on your own
+PC. Everything is free. Nothing leaves your machine.
 
 **Educational only.** It describes conditions and documented historical
-tendencies, with base rates and exceptions. It does not recommend securities or
-trades and is not investment advice.
+tendencies. It does not recommend securities or trades and is not investment
+advice.
 
-## What you need
+## Install (Windows)
 
-- **Node.js 18 or newer** — https://nodejs.org (any recent LTS works)
-- **Windows** for the one-command runners (`run.ps1`, `screener.ps1`) and the
-  FINRA margin fetch (it uses PowerShell to unzip). Everything else is plain
-  Node and runs anywhere; on Mac/Linux run the `node` commands listed below and
-  skip `fetch-margin.mjs`.
-- **A free FRED API key** — https://fred.stlouisfed.org/docs/api/api_key.html
-  (instant signup). Every other source — Yahoo, IMF, Treasury, FINRA, World
-  Bank, Eurostat, OECD/DBnomics, ECB, Statistics Canada, Our World in Data —
-  needs no key at all.
+1. **Install Node.js** from https://nodejs.org — click through the installer,
+   defaults are fine.
+2. **Download this repo**: green **Code** button above → **Download ZIP** →
+   unzip it anywhere you like.
+3. **Double-click `setup.bat`** in that folder.
 
-## Setup
+Setup asks for one thing: a **free FRED API key** (it shows you the link —
+signup takes a minute). It then offers to set up automatic updates
+(dashboard refreshes hourly, screener rebuilds daily), builds everything, and
+puts a **Macro Monitor** shortcut on your desktop.
 
-```bash
-git clone https://github.com/perfektoa/economics.git
-cd economics
-npm install
-```
+That's it. Double-click the shortcut. The page refreshes itself.
 
-Then create your config:
+The stock screener's first build downloads data for ~4,500 companies and takes
+1–2 hours — setup offers to run it in the background, or it just happens
+overnight on the daily schedule. After the first time it's fast.
 
-1. Copy `config.example.json` to `config.json`
-2. Paste your FRED API key into it
-3. *(Optional)* add an [ntfy.sh](https://ntfy.sh) topic for phone alerts on
-   regime changes, Fed moves and data releases. Install the ntfy app, subscribe
-   to a topic name, put the same name in the config. The topic name is
-   effectively a password — pick something long and random.
+## What you're looking at
 
-`config.json` is gitignored. Your key never leaves your machine and never goes
-into the repo.
+**The dashboard**: ~130 economic and market series, each scored against its own
+full history so every number answers "is this normal?" at a glance. Charts with
+recession shading, sector heat tables, which past months most resembled today
+(and what followed), sovereign debt for 194 countries, wealth concentration
+across six countries' central-bank data, margin debt against its prior bubble
+peaks, where federal spending actually goes (back to 1959), and a plain-English
+summary of what it adds up to. Hover anything for an explanation.
 
-## Run the dashboard
+**The screener**: ~4,500 US stocks scored on value, quality and momentum, with
+the numbers in-row: P/E, forward P/E, EV/EBITDA, P/B, debt/equity, net margin
+coloured against its own sector's median, ROE, insider buying, dilution, and
+warnings for commodity peaks, forecast earnings cliffs and profits not backed
+by cash. Everything wrong with a row is compressed into one hover chip.
 
-Windows, one command:
+## Notes
 
-```powershell
-.\run.ps1
-```
-
-That fetches everything (with sensible caching — re-runs are fast), rebuilds
-`dashboard.html`, and opens it. Use `.\run.ps1 -Force` to ignore caches.
-
-Or step by step on any OS:
-
-```bash
-node fetch-data.mjs        # FRED + Yahoo series (the core, ~2 min first run)
-node fetch-calendar.mjs    # release calendar + FOMC dates
-node fetch-debt.mjs        # IMF world debt + Treasury foreign holders
-node fetch-margin.mjs      # FINRA margin debt (Windows only)
-node fetch-intl.mjs        # ECB / StatCan / WID wealth distribution
-node fetch-compare.mjs     # World Bank / Eurostat cross-country indicators
-node build-dashboard.mjs   # writes dashboard.html
-```
-
-Open `dashboard.html` in a browser. Done.
-
-## Run the screener
-
-```powershell
-.\screener.ps1
-```
-
-Or by hand:
-
-```bash
-node fetch-screener.mjs    # ~4,500 tickers from Yahoo — the slow one (~1-2h first run, cached 7 days)
-node build-screener.mjs    # writes screener.html
-node fetch-fts.mjs         # 4y of statements for top candidates (dilution + earnings quality)
-node fetch-news.mjs        # headlines for top candidates
-node build-screener.mjs    # rebuild with the extra columns filled
-```
-
-Open `screener.html`. Sort by clicking column headers; filter by sector, cap
-bucket, style, or minimum score; hover anything for the explanation.
-
-An optional `notes.json` (see the banner on the screener page) lets you record
-findings from actually reading about a company — a pending takeover, an
-expiring licence — which override the numeric columns. It's gitignored;
-your research stays yours.
-
-## Keeping it fresh automatically (optional, Windows)
-
-Schedule `run.ps1` hourly and `screener.ps1` daily with Task Scheduler. The
-repo includes `silent-server.vbs` / `silent-screener.vbs` launchers that run
-them without flashing a console window. The dashboard page auto-reloads every
-30 minutes, and `server.mjs` (`node server.mjs`, then http://localhost:8787)
-serves it locally if you prefer a URL to a file path.
-
-## Data sources
-
-| Source | What | Key needed |
-|---|---|---|
-| FRED (St. Louis Fed) | US + world macro series | free key |
-| Yahoo Finance | indices, commodities, FX, stocks | no |
-| FINRA | margin debt (monthly xlsx) | no |
-| IMF DataMapper | debt/GDP, 194 countries | no |
-| US Treasury TIC | foreign holders of Treasuries | no |
-| ECB Data Portal | euro-area distributional wealth | no |
-| Statistics Canada WDS | Canadian wealth quintiles | no |
-| Our World in Data | WID wealth shares (UK/JP/AU) | no |
-| World Bank / Eurostat / DBnomics | cross-country indicators | no |
-
-Data quality guards are built in: impossible bars from Yahoo (zero prices,
-isolated 80% spikes) are dropped with a logged warning, foreign-exchange bars
-are dated in exchange-local time, and stale series are dropped from the page
-rather than shown as if current.
+- **Your key stays yours.** `config.json` lives only on your PC and is
+  gitignored. Optional phone alerts use [ntfy.sh](https://ntfy.sh) (free, no
+  account).
+- **Mac/Linux**: no one-click setup, but everything except the FINRA margin
+  fetch is plain Node — `npm install`, copy `config.example.json` to
+  `config.json` with your key, then run the `fetch-*.mjs` scripts and
+  `node build-dashboard.mjs` / `node build-screener.mjs`.
+- **Data sources**: FRED (the one key), plus Yahoo, FINRA, IMF, US Treasury,
+  ECB, Statistics Canada, World Bank, Eurostat, OECD/DBnomics and Our World in
+  Data — all keyless. Bad data is guarded against: impossible price bars are
+  dropped with a logged warning, foreign bars are dated in exchange-local time,
+  and stale series are removed from the page rather than shown as current.
+- **Undo automatic updates**: delete the `MacroMonitor` and `MacroScreener`
+  tasks in Windows Task Scheduler.
+- An optional `notes.json` (explained on the screener page) records findings
+  from actually reading about a company — a pending takeover, an expiring
+  licence — and overrides the numeric columns. It's gitignored; your research
+  stays yours.
